@@ -1,0 +1,46 @@
+{
+  "name": "onbings-vista",
+  "version": "1.2.3",
+  "description": "The ONBINGS VISTA application",
+  "dependencies": [
+    {
+      "name": "evs-cmake"
+    },
+    {
+      "name": "evs-hwfw-ilf",
+      "features": [
+        "backend-spdlog"
+      ]
+    },
+    {
+      "name": "evs-hwfw-chip"
+    },
+    {
+      "name": "evs-hwfw-bofstd",
+      "features": [
+        "httplib"
+      ]
+    },
+    {
+      "name": "opencv4",
+      "default-features": false,
+      "features": [
+        "fs",
+        "intrinsics",
+        "jpeg",
+        "png",
+        "thread",
+        "tiff",
+        "webp"
+      ]
+    }
+  ],
+  "features": {
+    "gtest": {
+      "description": "Testing framework",
+      "dependencies": [
+        "gtest"
+      ]
+    }
+  }
+}

@@ -1,0 +1,179 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Open Core Dump C++ (vista-service)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/out/build/${command:cmake.activeConfigurePresetName}/binaries/bin/onbings-vista-service",
+            "coreDumpPath": "${workspaceFolder}/vista.core",
+            "cwd": "${workspaceFolder}/out/build/${command:cmake.activeConfigurePresetName}/binaries",
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/opt/rh/gcc-toolset-13/root/usr/bin/gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Find the AppImage-bundled shared libraries next to the binary",
+                    "text": "set solib-search-path ${workspaceFolder}/out/build/${command:cmake.activeConfigurePresetName}/binaries/lib",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Test C++",
+            "type": "cppdbg",
+            "request": "launch",
+            "preLaunchTask": "Tsk:BldLocalDebug",
+            "program": "${workspaceFolder}/out/build/${command:cmake.activeConfigurePresetName}/binaries/bin/onbings-vista-tests",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/out/build/${command:cmake.activeConfigurePresetName}/binaries",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/opt/rh/gcc-toolset-13/root/usr/bin/gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Load .gdbinit file",
+                    "text": "source ${workspaceFolder}/.gdbinit"
+                }
+            ],
+            "windows": {
+                "type": "cppvsdbg",
+                "program": "${workspaceFolder}/out/build/${command:cmake.activeConfigurePresetName}/binaries/bin/${command:cmake.buildType}/onbings-vista-tests.exe",
+                "cwd": "${workspaceFolder}/out/build/${command:cmake.activeConfigurePresetName}/binaries/bin/${command:cmake.buildType}",
+                "console": "integratedTerminal"
+            }
+        },
+        {
+            "name": "Service C++",
+            "type": "cppdbg",
+            "request": "launch",
+            "preLaunchTask": "Tsk:BldLocalDebug",
+            "program": "${workspaceFolder}/out/build/${command:cmake.activeConfigurePresetName}/binaries/bin/onbings-vista-service",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/out/build/${command:cmake.activeConfigurePresetName}/binaries",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/opt/rh/gcc-toolset-13/root/usr/bin/gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Load .gdbinit file",
+                    "text": "source ${workspaceFolder}/.gdbinit"
+                }
+            ],
+            "windows": {
+                "type": "cppvsdbg",
+                "program": "${workspaceFolder}/out/build/${command:cmake.activeConfigurePresetName}/binaries/bin/${command:cmake.buildType}/onbings-vista-service.exe",
+                "cwd": "${workspaceFolder}/out/build/${command:cmake.activeConfigurePresetName}/binaries/bin/${command:cmake.buildType}",
+                "console": "integratedTerminal"
+            }
+        },
+        {
+            "name": "Rem Test C++",
+            "preLaunchTask": "Tsk:VistaTestCpp",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/out/build/all-p6x-debug/binaries/bin/onbings-vista-tests",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/out/build/all-p6x-debug/binaries",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerServerAddress": "${config:targetHost}:${config:cppGdbPort}",
+            "miDebuggerPath": "/opt/sdk/p6x/opt/ext-toolchain/bin/x86_64-evs-linux-gnu-gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Rem Service C++",
+            "preLaunchTask": "Tsk:VistaServiceCpp",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/out/build/${command:cmake.activeConfigurePresetName}/binaries/bin/onbings-vista-service",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/out/build/${command:cmake.activeConfigurePresetName}/binaries",
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerServerAddress": "${config:targetHost}:${config:cppGdbPort}",
+            "miDebuggerPath": "/opt/sdk/p6x/opt/ext-toolchain/bin/x86_64-evs-linux-gnu-gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "!!! Dbg:Special Rem Service C++ use native gdb as it has python support so can load .gdbinit. This work because we have the same cpu arch but not recommanded !!!",
+            "preLaunchTask": "Tsk:VistaServiceCpp",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/out/build/${command:cmake.activeConfigurePresetName}/binaries/bin/onbings-vista",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/out/build/all-p6x-debug/binaries",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerServerAddress": "${config:targetHost}:${config:cppGdbPort}",
+            "miDebuggerPath": "/opt/rh/gcc-toolset-13/root/usr/bin/gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Load .gdbinit file",
+                    "text": "source ${workspaceFolder}/.gdbinit"
+                }
+            ]
+        },
+        {
+            "name": "Debug vista Python Client",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/code/sources/onbings-vista-python-client/vista-client.py",
+            "args": [
+                "--host",
+                "xts-005",
+                "--port",
+                "3000",
+                "--command",
+                "memory_access",
+                "--timeout",
+                "9999999999"
+            ],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "stopOnEntry": false,
+            "justMyCode": true
+        }
+    ]
+}

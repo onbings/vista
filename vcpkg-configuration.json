@@ -1,0 +1,25 @@
+{
+  "default-registry": {
+    "kind": "git",
+    "baseline": "602a25b678660ad74413bd46f09ac1d304b5d870",
+    "repository": "ssh://git@bitbucket.evs.tv:7999/vcpkg/vcpkg.git"
+  },
+  "registries": [
+    {
+      "kind": "git",
+      "baseline": "e19e020ce1c562770c430767c99374e6a3e4ea07",
+      "repository": "ssh://git@bitbucket.evs.tv:7999/evs-hwfw-cmake-vcpkg/evs-hwfw-vcpkg-registry.git",
+      "packages": [
+        "evs-hwfw-*"
+      ]
+    },
+    {
+      "kind": "git",
+      "baseline": "1f6d7a3eac4cbd345df3d4e19327b933baf7e2f9",
+      "repository": "ssh://git@bitbucket.evs.tv:7999/vcpkg/evs-vcpkg-registry.git",
+      "packages": [
+        "evs-*"
+      ]
+    }
+  ]
+}

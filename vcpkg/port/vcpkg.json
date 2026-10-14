@@ -1,0 +1,51 @@
+{
+  "name": "onbings-vista",
+  "version": "1.2.3",
+  "description": "The onbings-vista engine",
+  "default-features": [
+  ],
+  "dependencies": [
+    {
+      "name": "evs-cmake"
+    },
+    {
+      "name": "evs-hwfw-ilf",
+      "features": [
+        "backend-spdlog"
+      ]
+    },
+    {
+      "name": "evs-hwfw-chip"
+    },
+    {
+      "name": "evs-hwfw-bofstd",
+      "features": [
+        "httplib"
+      ]
+    },
+    {
+      "name": "evs-hwfw-ace"
+    },
+    {
+      "name": "opencv4",
+      "default-features": false,
+      "features": [
+        "fs",
+        "intrinsics",
+        "jpeg",
+        "png",
+        "thread",
+        "tiff",
+        "webp"
+      ]
+    }
+  ],
+  "features": {
+    "gtest": {
+      "description": "Testing framework",
+      "dependencies": [
+        "gtest"
+      ]
+    }
+  }
+}

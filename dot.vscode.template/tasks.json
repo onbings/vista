@@ -1,0 +1,202 @@
+{
+    "version": "2.0.0",
+    "inputs": [
+        {
+            "id": "terminateAllTasks",
+            "type": "command",
+            "command": "workbench.action.tasks.terminate",
+            "args": "terminateAll"
+        },
+        {
+            "id": "vcpkgProfile",
+            "type": "pickString",
+            "description": "Select the vcpkg-configuration variant to activate",
+            "options": [
+                "public",
+                "evs"
+            ],
+            "default": "public"
+        }
+    ],
+    "tasks": [
+        {
+            "label": "Echo User",
+            "type": "shell",
+            "command": "echo",
+            "args": [
+                "Windows User: ${env:USERNAME}",
+                "Linux/macOS User: ${env:USER}"
+            ]
+        },
+        {
+            "label": "Tsk:SelectVcpkgConfig",
+            "detail": "Copy the picked vcpkg-configuration variant (public|evs) into vcpkg-configuration.json before configure",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "-E",
+                "copy",
+                "${workspaceFolder}/vcpkg-configuration.${input:vcpkgProfile}.json",
+                "${workspaceFolder}/vcpkg-configuration.json"
+            ],
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Tsk:BldPrj",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "${command:cmake.buildDirectory}"
+            ],
+            "group": "build",
+            "options": {
+                "cwd": "${command:cmake.buildDirectory}"
+            }
+        },
+        {
+            "label": "Tsk:KillLocal",
+            "detail": "Kill local onbings-vista-service/tests instances before building (avoids LNK1168 file lock)",
+            "type": "process",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-Command",
+                "Get-Process -Name onbings-vista-service,onbings-vista-tests -ErrorAction SilentlyContinue | Stop-Process -Force; exit 0"
+            ],
+            "linux": {
+                "command": "bash",
+                "args": [
+                    "-c",
+                    "pkill -9 -f onbings-vista-service; pkill -9 -f onbings-vista-tests; true"
+                ]
+            },
+            "osx": {
+                "command": "bash",
+                "args": [
+                    "-c",
+                    "pkill -9 -f onbings-vista-service; pkill -9 -f onbings-vista-tests; true"
+                ]
+            },
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Tsk:BldLocalDebug",
+            "detail": "Kill local instances then build the active CMake preset for local debugging",
+            "dependsOrder": "sequence",
+            "dependsOn": [
+                "Tsk:KillLocal",
+                "Tsk:BldPrj"
+            ],
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "Tsk:MkDir",
+            "detail": "Create remote directories to deploy package and ut data under linux",
+            "type": "shell",
+            "command": "ssh",
+            "args": [
+                "${config:targetUser}@${config:targetHost}",
+                "mkdir -p /tmp/${env:USER}_vista/lib && mkdir -p /tmp/${env:USER}_vista/bin && mkdir -p /tmp/${env:USER}_vista/data && mkdir -p /tmp/${env:USER}_vista/bin/assets && mkdir -p /tmp/${env:USER}_vista/python_package_1"
+            ],
+            "group": "build"
+        },
+        {
+            "label": "Tsk:KillAll",
+            "dependsOn": [
+                "Tsk:BldPrj"
+            ],
+            "detail": "Kill specific gdbserver process listening on ${config:cppGdbPort}",
+            "type": "process",
+            "command": "bash",
+            "args": [
+                "-c",
+                "ssh ${config:targetUser}@${config:targetHost} 'pkill -f \"gdbserver.*${config:cppGdbPort}\" || killall -9 onbings-vista-tests || true' || true"
+            ],
+            "group": "build",
+            "isBackground": false,
+            "problemMatcher": []
+        },
+        {
+            "label": "Tsk:TermAllTask",
+            "command": "echo ${input:terminateAllTasks}",
+            "type": "shell",
+            "problemMatcher": []
+        },
+        {
+            "label": "Tsk:DeployDebugArtifact",
+            "dependsOn": [
+                "Tsk:KillAll",
+                "Tsk:MkDir"
+            ],
+            "detail": "Copy all built artifacts (bin, lib, data) to remote directory using rsync",
+            "type": "shell",
+            "command": "rsync -av \"${workspaceFolder}/out/build/all-p6x-debug/binaries/bin/\" \"${config:targetUser}@${config:targetHost}:/tmp/${env:USER}_vista/bin/\" && rsync -av \"${workspaceFolder}/out/build/all-p6x-debug/binaries/lib/\" \"${config:targetUser}@${config:targetHost}:/tmp/${env:USER}_vista/lib/\" && rsync -av \"${workspaceFolder}/code/sources/onbings-vista-lib/assets/\" \"${config:targetUser}@${config:targetHost}:/tmp/${env:USER}_vista/bin/assets/\"",
+            "group": "build"
+        },
+        {
+            "label": "Tsk:DeployReleaseArtifact",
+            "dependsOn": [
+                "Tsk:KillAll",
+                "Tsk:MkDir"
+            ],
+            "detail": "Copy all built artifacts (bin, lib, data) to remote directory using rsync",
+            "type": "shell",
+            "command": "rsync -av \"${workspaceFolder}/out/build/all-p6x-release/binaries/bin/\" \"${config:targetUser}@${config:targetHost}:/tmp/${env:USER}_vista/bin/\" && rsync -av \"${workspaceFolder}/out/build/all-p6x-release/binaries/lib/\" \"${config:targetUser}@${config:targetHost}:/tmp/${env:USER}_vista/lib/\" && rsync -av \"${workspaceFolder}/code/sources/onbings-vista-lib/assets/\" \"${config:targetUser}@${config:targetHost}:/tmp/${env:USER}_vista/bin/assets/\"",
+            "group": "build"
+        },
+        {
+            "label": "Tsk:PrismTestCpp",
+            "detail": "Debug vista Test Cpp with C++ gdb Debugger (auto debug/release from active CMake preset)",
+            "dependsOn": [
+                "Tsk:BldPrj"
+            ],
+            "type": "process",
+            "command": "bash",
+            "args": [
+                "-lc",
+                "preset='${command:cmake.activeConfigurePresetName}'; preset_lc=\"${preset,,}\"; if [[ \"$preset_lc\" =~ -r(e)?lease$ ]]; then build_flavor='release'; build_dir='all-p6x-release'; else build_flavor='debug'; build_dir='all-p6x-debug'; fi; echo \"[TASK] Active configure preset: $preset\"; echo \"[TASK] Selected flavor: $build_flavor ($build_dir)\"; ssh ${config:targetUser}@${config:targetHost} 'pkill -f \"gdbserver.*${config:cppGdbPort}\" || killall -9 onbings-vista-tests || true' || true; ssh ${config:targetUser}@${config:targetHost} 'mkdir -p /tmp/${env:USER}_vista/lib && mkdir -p /tmp/${env:USER}_vista/bin && mkdir -p /tmp/${env:USER}_vista/data && mkdir -p /tmp/${env:USER}_vista/bin/assets && mkdir -p /tmp/${env:USER}_vista/python_package_1'; rsync -av \"${workspaceFolder}/out/build/${build_dir}/binaries/bin/\" \"${config:targetUser}@${config:targetHost}:/tmp/${env:USER}_vista/bin/\" && rsync -av \"${workspaceFolder}/out/build/${build_dir}/binaries/lib/\" \"${config:targetUser}@${config:targetHost}:/tmp/${env:USER}_vista/lib/\" && rsync -av \"${workspaceFolder}/code/sources/onbings-vista-lib/assets/\" \"${config:targetUser}@${config:targetHost}:/tmp/${env:USER}_vista/bin/assets/\"; ssh -t ${config:targetUser}@${config:targetHost} 'cd /tmp/${env:USER}_vista/bin && export LD_LIBRARY_PATH=./assets/axelera/venv/lib && gdbserver localhost:${config:cppGdbPort} /tmp/${env:USER}_vista/bin/onbings-vista-tests'"
+            ],
+            "group": "build",
+            "isBackground": true,
+            "problemMatcher": {
+                "pattern": {
+                    "regexp": ".*"
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "Listening on port [0-9]+",
+                    "endsPattern": "Listening on port [0-9]+"
+                }
+            }
+        },
+        {
+            "label": "Tsk:PrismServiceCpp",
+            "detail": "Debug vista Service Cpp with C++ gdb Debugger (auto debug/release from active CMake preset)",
+            "dependsOn": [
+                "Tsk:BldPrj"
+            ],
+            "type": "process",
+            "command": "bash",
+            "args": [
+                "-lc",
+                "preset='${command:cmake.activeConfigurePresetName}'; preset_lc=\"${preset,,}\"; if [[ \"$preset_lc\" =~ -r(e)?lease$ ]]; then build_flavor='release'; build_dir='all-p6x-release'; else build_flavor='debug'; build_dir='all-p6x-debug'; fi; echo \"[TASK] Active configure preset: $preset\"; echo \"[TASK] Selected flavor: $build_flavor ($build_dir)\"; ssh ${config:targetUser}@${config:targetHost} 'pkill -f \"gdbserver.*${config:cppGdbPort}\" || killall -9 onbings-vista-tests || true' || true; ssh ${config:targetUser}@${config:targetHost} 'mkdir -p /tmp/${env:USER}_vista/lib && mkdir -p /tmp/${env:USER}_vista/bin && mkdir -p /tmp/${env:USER}_vista/data && mkdir -p /tmp/${env:USER}_vista/bin/assets && mkdir -p /tmp/${env:USER}_vista/python_package_1'; rsync -av \"${workspaceFolder}/out/build/${build_dir}/binaries/bin/\" \"${config:targetUser}@${config:targetHost}:/tmp/${env:USER}_vista/bin/\" && rsync -av \"${workspaceFolder}/out/build/${build_dir}/binaries/lib/\" \"${config:targetUser}@${config:targetHost}:/tmp/${env:USER}_vista/lib/\" && rsync -av \"${workspaceFolder}/code/sources/onbings-vista-lib/assets/\" \"${config:targetUser}@${config:targetHost}:/tmp/${env:USER}_vista/bin/assets/\"; ssh -t ${config:targetUser}@${config:targetHost} 'cd /tmp/${env:USER}_vista/bin &&      && gdbserver localhost:${config:cppGdbPort} /tmp/${env:USER}_vista/bin/onbings-vista-service'"
+            ],
+            "group": "build",
+            "isBackground": true,
+            "problemMatcher": {
+                "pattern": {
+                    "regexp": ".*"
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "Listening on port [0-9]+",
+                    "endsPattern": "Listening on port [0-9]+"
+                }
+            }
+        }
+    ]
+}

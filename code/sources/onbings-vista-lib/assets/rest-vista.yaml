@@ -1,0 +1,287 @@
+#===============================================================================
+# ONBINGS VISTA REST API - Comprehensive OpenAPI 3.0.3 Specification
+#===============================================================================
+# VISTA : Vision Intelligence, Statistics, and Tracking Analysis
+# This API controls the ONBINGS VISTA system
+#
+# Editor: https://editor.swagger.io/
+# Swagger UI Local Setup: https://winkykyk.medium.com/tutorial-how-to-use-swagger-ui-locally-e24bb2a1c1ee
+#
+#===============================================================================
+
+openapi: 3.0.3
+info:
+  title: "ONBINGS VISTA REST API"
+  version: "1.3.0"
+  description: |
+    ## Overview
+    The **VISTA REST API** provides runtime control of the ONBINGS VISTA system.
+    VISTA stands for *Vision Intelligence, Statistics, and Tracking Analysis*.
+
+  contact:
+    name: "ONBINGS"
+    email: "onbings@gmail.com"
+    url: "https://onbings.dscloud.me"
+
+  license:
+    name: "Private License"
+    url: "https://evs.com/eu/licensing"
+
+  x-api-lifecycle:
+    status: "Production"
+
+servers:
+  - url: "http://127.0.0.1:7000/vista/v1"
+    description: "Local Development test server"
+  - url: "https://127.0.0.1:7000/vista/v1"
+    description: "Local Secure Development test server"
+  - url: "https://xts-009:7000/vista/v1"
+    description: "Development test server XTS-009"
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: "general"
+    description: "Root, documentation and authentication endpoints"
+  - name: "configuration"
+    description: "System configuration (modules, channels, Axelera availability)"
+
+paths:
+  # ===========================================================================
+  # General
+  # ===========================================================================
+  /:
+    get:
+      tags: [general]
+      summary: "Redirect to documentation"
+      description: |
+        Root endpoint. Redirects the browser to '/vista/v1/doc'.
+
+        **No Authentication Required.**
+      operationId: "GetRoot"
+      security: []
+      responses:
+        "302":
+          description: "Redirect to /vista/v1/doc"
+          headers:
+            Location:
+              description: "Target documentation URL"
+              schema:
+                type: string
+                example: "/vista/v1/doc"
+
+  /doc:
+    get:
+      tags: [general]
+      summary: "Retrieve interactive API documentation"
+      description: |
+        Returns the Swagger UI HTML page for live API exploration and testing.
+
+        **No Authentication Required.**
+      operationId: "GetDoc"
+      security: []
+      responses:
+        "200":
+          description: "HTML documentation page"
+          content:
+            text/html:
+              schema:
+                type: string
+        "503":
+          description: |
+            **Service Unavailable** - 'assets/www/rest-vista.html' not found on disk.
+
+  /auth:
+    post:
+      tags: [general]
+      summary: "Authenticate and obtain a JWT token"
+      description: |
+        Authenticates against the system PAM service and returns a 30-minute JWT token.
+
+        Local connections (127.0.0.1, ::1) bypass authentication.
+
+        **REMARK**: Disabled by default - enabled with 'ONBINGS_VISTA_ADD_AUTH'.
+      operationId: "PostAuth"
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthRequest"
+      responses:
+        "200":
+          description: "Authentication successful - JWT token in response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSuccessResponse"
+        "401":
+          description: "Invalid credentials"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ===========================================================================
+  # Configuration
+  # ===========================================================================
+  /config:
+    get:
+      tags: [configuration]
+      summary: "Get system configuration"
+      description: |
+        Returns the system configuration including:
+        - Number of modules (up to 4) and for each module: number of channels (up to 8).
+        - Each channel has: name, isPlayer (bool), videoStandard.
+        - Whether the Axelera AI accelerator device is present and available.
+
+        **No Authentication Required.**
+      operationId: "GetConfig"
+      security: []
+      responses:
+        "200":
+          description: "Configuration retrieved"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConfigResponse"
+              example:
+                code: 0
+                msg: "Configuration retrieved"
+                config:
+                  selectedModule: 0
+                  focusChannel: 1
+                  monitorChannelBitmask: 4294967295
+                  axeleraAvailable: true
+                  modules:
+                    - index: 0
+                      channels:
+                        - index: 0
+                          name: "XTS Player 1"
+                          isPlayer: true
+                          videoStandard: "1080i50"
+                        - index: 1
+                          name: "XTS Recorder 1"
+                          isPlayer: false
+                          videoStandard: "1080p25"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+# ===========================================================================
+# Reusable components
+# ===========================================================================
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "JWT obtained from POST /auth. Not required for local connections."
+
+  # ---------------------------------------------------------------------------
+  # Responses
+  # ---------------------------------------------------------------------------
+  responses:
+    SuccessResponse:
+      description: "Operation completed successfully"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/StandardResponse"
+          example:
+            code: 0
+            msg: "Operation successful"
+
+    BadRequest:
+      description: "**Bad Request** - Invalid or missing parameter."
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: -1
+            msg: "Invalid 'module' parameter 'xyz': expected a non-negative integer"
+
+    ServiceUnavailable:
+      description: "**Service Unavailable** - The underlying engine call failed."
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            code: -2
+            msg: "Failed to apply selection"
+
+  # ---------------------------------------------------------------------------
+  # Schemas
+  # ---------------------------------------------------------------------------
+  schemas:
+    StandardResponse:
+      type: object
+      required: [code, msg]
+      properties:
+        code:
+          type: integer
+          description: "0 = success, negative = error"
+          example: 0
+        msg:
+          type: string
+          example: "Operation successful"
+
+    ErrorResponse:
+      type: object
+      required: [code, msg]
+      properties:
+        code:
+          type: integer
+          example: -2
+        msg:
+          type: string
+          example: "Failed"
+
+    AuthRequest:
+      type: object
+      required: [username, password, pam-service]
+      properties:
+        username:
+          type: string
+          example: "xts"
+        password:
+          type: string
+          format: password
+        pam-service:
+          type: string
+          example: "login"
+
+    AuthSuccessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+        token:
+          type: string
+        expiresIn:
+          type: integer
+          description: "Token validity in seconds"
+          example: 1800
+
+    ConfigResponse:
+      type: object
+      required: [code, msg, config]
+      properties:
+        code:
+          type: integer
+          example: 0
+        msg:
+          type: string
+          example: "Configuration retrieved"
+        config:
+          type: object
+          properties:
+            dummy:
+              type: integer
+              description: "Currently selected module index in the engine."
+              example: 0

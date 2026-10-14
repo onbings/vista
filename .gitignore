@@ -1,0 +1,20 @@
+# Project specific
+/CMakeUserPresets.json
+/CMakeCache.txt
+/CMakeFiles/
+code/solutions/custom.cmake
+/build*/
+out/
+
+# Byte-compiled python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+
+# Visual studio code related
+.project
+.cproject
+.settings/
+.vscode
+.core

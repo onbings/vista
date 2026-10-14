@@ -1,0 +1,35 @@
+#pragma once
+
+namespace ONBINGS::Vista::@CURRENT_LIB_NAME@
+{
+  consteval bool is_digit(char c)
+  {
+	  return c <= '9' && c >= '0';
+  }
+
+  // Recursively convert const char * to int
+  consteval int stoi_impl(const char * str, int value = 0)
+  {
+    return *str ?
+        is_digit(*str) ? stoi_impl(str + 1, (*str - '0') + value * 10)
+                : throw "compile-time-error: not a digit"
+        : value;
+  }
+
+  consteval int stoi(const char * str)
+  {
+	  return stoi_impl(str);
+  }
+
+  static consteval const char * get_version           () { return "@PROJECT_VERSION@"; }
+
+  static consteval const char * get_version_major_str () { return "@PROJECT_VERSION_MAJOR@"; }
+  static consteval const char * get_version_minor_str () { return "@PROJECT_VERSION_MINOR@"; }
+  static consteval const char * get_version_patch_str () { return "@PROJECT_VERSION_PATCH@"; }
+  static consteval const char * get_version_build_str () { return "@PROJECT_VERSION_TWEAK@"; }
+
+  static consteval int          get_version_major     () { return stoi(get_version_major_str()); }
+  static consteval int          get_version_minor     () { return stoi(get_version_minor_str()); }
+  static consteval int          get_version_patch     () { return stoi(get_version_patch_str()); }
+  static consteval int          get_version_build     () { return stoi(get_version_build_str()); }
+}

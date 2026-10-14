@@ -1,0 +1,19 @@
+[build-system]
+requires = [ "setuptools" ]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "@PYTHON_MODULE_NAME@"
+version = "@PROJECT_VERSION@"
+
+dependencies = [
+  @PYTHON_MODULE_DEPENDENCIES@
+]
+
+@PYTHON_MODULE_EXECUTABLE_SECTION@
+
+[tool.setuptools]
+packages = ["@PYTHON_MODULE_NAME@"]
+
+[tool.setuptools.package-data]
+@PYTHON_MODULE_NAME@ = ["*.so", "*.pyd"]

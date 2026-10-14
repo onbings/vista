@@ -1,0 +1,3 @@
+from .@PYTHON_MODULE_NAME@ import *
+
+__version__ = @PYTHON_MODULE_NAME@.__version__

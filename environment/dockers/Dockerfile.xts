@@ -1,0 +1,473 @@
+# ===========================
+# == CREATE THE BASE IMAGE ==
+# ===========================
+
+ARG OS_VERSION=9.3
+FROM dockerhub.artifactory.evs.tv/rockylinux/rockylinux:$OS_VERSION AS image_base
+
+ARG OS_VERSION
+
+ENV OS_VERSION=$OS_VERSION
+ENV OS_NAME=centos
+
+WORKDIR /
+ARG PARALLEL_BUILD=1
+
+# Add evs-repo
+ADD https://artifactory.evs.tv/cgi-bin/evs-repo.rpm?el9 /tmp/evs-repo.rpm
+
+# Install target system
+RUN dnf clean all  \
+    && dnf localinstall -y /tmp/evs-repo.rpm  \
+    && evs-repo -v -x -o permanently $OS_VERSION  \
+    && dnf install -y evs-ci-cacert \
+    && dnf clean all  \
+    && rm -rf /var/cache/dnf \
+    && rm -rf /tmp/evs-repo.rpm
+
+# Install minimum required packages
+RUN dnf install -y \
+    openssl \
+    wget \
+    && dnf clean all  \
+    && rm -rf /var/cache/dnf
+
+# =================================
+# == BUILD THE DEVELOPMENT IMAGE ==
+# =================================
+
+# The development image is the image used to build the components
+# That is, it adds every tool needed to compile and build
+# As such those images are more "heavy weighted" and not the best
+# match for deploying runtime applications
+
+FROM image_base AS image_devel
+
+# =============
+# == TOOLSET ==
+# =============
+
+# Install default devtoolset
+ARG TOOLSET=13
+RUN dnf install -y \
+    gcc-toolset-$TOOLSET \
+    gcc-toolset-$TOOLSET-libatomic-devel \
+    && dnf clean all  \
+    && rm -rf /var/cache/dnf
+
+# Make toolset available to everyone
+ENV BASH_ENV=/opt/rh/gcc-toolset-$TOOLSET/enable \
+    ENV=/opt/rh/gcc-toolset-$TOOLSET/enable \
+    PROMPT_COMMAND=". /opt/rh/gcc-toolset-$TOOLSET/enable" \
+    PATH=/opt/rh/gcc-toolset-$TOOLSET/root/usr/bin:$PATH
+
+# =====================
+# == SYSTEM PACKAGES ==
+# =====================
+
+# Install additional packages
+RUN dnf install -y \
+    autoconf-archive \
+    automake \
+    avahi \
+    avahi-devel \
+    avahi-tools	\
+    bison \
+    bzip2 \
+    bzip2-devel \
+    curl-devel \
+    doxygen \
+    epel-release \
+    flex \
+    gettext-devel \
+    git \
+    gperf \
+    graphviz \
+    haproxy \
+    iptables \
+    java-latest-openjdk \
+    lcov \
+    libatomic \
+    libffi-devel \
+    libglvnd-devel \
+    libglvnd-egl \
+    libglvnd-gles \
+    libglvnd-opengl \
+    libdrm-devel \
+    mesa-libgbm-devel \
+    libtool \
+    libXcursor-devel \
+    libXi-devel \
+    libXinerama-devel \
+    libXrandr-devel \
+    libXdmcp-devel \
+    libcap-devel \
+    make \
+    nano \
+    nasm \
+    openssl \
+    openssl-devel \
+    pam-devel \
+    patch \
+    patchelf \
+    pkgconfig \
+    plantuml \
+    perl-CPAN \
+    perl-devel \
+    perl-IPC-Cmd \
+    pkgconf-pkg-config \ 
+    psmisc \
+    readline-devel \
+    rpm-build \
+    rpm-devel \
+    rpmdevtools \
+    rsync \
+    sqlite \
+    sqlite-devel \
+    socat \
+    subversion \
+    systemd-devel \
+    texlive-adjustbox \
+    texlive-collection-fontsrecommended \
+    texlive-collection-latex \
+    texlive-collection-latexrecommended \
+    texlive-etoc \
+    texlive-fancyhdr \
+    texlive-float \
+    texlive-geometry \
+    texlive-hanging \
+    texlive-latex \
+    texlive-latex-bin \
+    texlive-listofitems \
+    texlive-multirow \
+    texlive-natbib \
+    texlive-newunicodechar \
+    texlive-sectsty \
+    texlive-stackengine \
+    texlive-tocloft \
+    texlive-ulem \
+    texlive-wasysym \
+    texlive-xifthen \
+    tk-devel \
+    wget  \
+    zlib-devel \
+    xz-devel \
+    && dnf clean all  \
+    && rm -rf /var/cache/dnf
+
+
+# =====================
+# == Install python3 ==
+# =====================
+
+# Load versions for common tools
+COPY versions/* /tmp/versions/
+
+# =========================
+# == Install Node.js & npm ==
+# =========================
+ARG NODE_MAJOR=20 # You can change this to 18, 22, etc., for different LTS versions
+RUN dnf install -y curl --allowerasing \
+    && curl -fsSL https://rpm.nodesource.com/setup_${NODE_MAJOR}.x | bash - \
+    && dnf install -y nodejs \
+    && dnf clean all \
+    && rm -rf /var/cache/dnf
+
+# Install python3
+#RUN LD_LIBRARY_PATH="/usr/local/lib:$LD_LIBRARY_PATH" cd /tmp \
+RUN cd /tmp \
+    && VERSION=$(cat /tmp/versions/python.version) \
+    && VERSION_MA_MI="$(echo $VERSION | cut -d '.' -f 1)"."$(echo $VERSION | cut -d '.' -f 2)" \
+    && mkdir python \
+    && wget -qO- "https://www.python.org/ftp/python/$VERSION/Python-$VERSION.tgz" | tar --strip-component=1 -xz -C /tmp/python \
+    && cd /tmp/python \
+    #&& sed -i 's/PKG_CONFIG openssl /PKG_CONFIG openssl11 /g' configure \
+    && ./configure --enable-optimizations --enable-shared LDFLAGS=-Wl,-rpath=/usr/local/lib \
+    && make altinstall \
+    && alternatives --install /usr/bin/python3 python3 /usr/local/bin/python$VERSION_MA_MI 1 \
+    && alternatives --set python3 /usr/local/bin/python$VERSION_MA_MI \
+    && python$VERSION_MA_MI --version \
+    && rm -rf /tmp/python
+
+# =====================
+# == INSTALL SWIG    ==
+# =====================
+
+RUN cd /tmp \
+    && VERSION=$(cat /tmp/versions/swig.version) \
+	&& mkdir swig \
+       && wget -qO- "https://github.com/swig/swig/archive/refs/tags/v$VERSION.tar.gz" | tar --strip-component=1 -xz -C /tmp/swig \
+    && cd /tmp/swig \
+    && ./autogen.sh \
+       && ./configure --prefix=/usr/local \
+    && make -j$PARALLEL_BUILD \
+    && make install \
+    && swig -version \
+    && cd / \
+    && rm -rf /tmp/swig
+
+# =====================
+# == Install Autoconf ==
+# =====================
+
+RUN cd /tmp \
+    && VERSION=$(cat /tmp/versions/autoconf.version) \
+	&& mkdir autoconf \
+       && wget --tries=5 --retry-connrefused --waitretry=5 -O autoconf.tar.xz "https://ftp.gnu.org/gnu/autoconf/autoconf-$VERSION.tar.xz" \
+    && tar --strip-component=1 -xJf autoconf.tar.xz -C /tmp/autoconf \
+    && rm -f autoconf.tar.xz \
+    && cd /tmp/autoconf \
+    && ./configure --prefix=/usr/local \
+       && make -j$PARALLEL_BUILD \
+    && make install \
+    && autoconf --version \
+    && cd / \
+    && rm -rf /tmp/autoconf
+
+# ==============================================
+# == Install pip, setuptools, wheel, and venv ==
+# ==============================================
+
+# Ensure pip, setuptools, and wheel are installed and up to date
+RUN python3 -m ensurepip --upgrade \
+    && python3 -m pip install --upgrade pip setuptools wheel
+RUN python3 -m pip install --no-cache-dir pyyaml
+
+# Test venv creation (optional, for validation)
+RUN python3 -m venv /tmp/testenv && rm -rf /tmp/testenv
+
+# ==========
+# == MONO ==
+# ==========
+
+# Install mono
+RUN dnf install -y \
+      mono-complete \
+    && dnf clean all  \
+    && rm -rf /var/cache/dnf
+
+# ===========
+# == JFROG ==
+# ===========
+
+# Install jfrog
+RUN cd /usr/local/bin \
+    && VERSION=$(cat /tmp/versions/jfrog.version) \
+    && VER_MAJ=$(echo $VERSION | cut -d '.' -f 1) \
+    && wget https://releases.jfrog.io/artifactory/jfrog-cli/v$VER_MAJ/$VERSION/jfrog-cli-linux-amd64/jfrog \
+    && chmod +x ./jfrog \
+    && chmod 755 ./jfrog \
+    && jfrog --version
+
+# ==============
+# == VALGRIND ==
+# ==============
+
+# Update valgrind to fix some issues
+RUN cd /tmp  \
+    && VERSION=$(cat /tmp/versions/valgrind.version) \
+    && mkdir valgrind  \
+    && wget -qO- "https://sourceware.org/pub/valgrind/valgrind-$VERSION.tar.bz2" | tar --strip-component=1 -xj -C /tmp/valgrind  \
+    && cd /tmp/valgrind  \
+    && bash -c './configure --prefix /usr/local'  \
+    && bash -c 'make -j $PARALLEL_BUILD'  \
+    && make install  \
+    && rm -rf /tmp/valgrind
+
+# ===========
+# == CMAKE ==
+# ===========
+
+# Install cmake
+RUN VERSION=$(cat /tmp/versions/cmake.version) \
+    && wget -qO- "https://github.com/Kitware/CMake/releases/download/v$VERSION/cmake-$VERSION-linux-x86_64.tar.gz" | tar --strip-components=1 -xz -C /usr/local
+
+ENV PATH=/usr/local/cmake/bin:$PATH
+
+# =========
+# == GIT ==
+# =========
+
+# Update git version
+RUN cd /tmp \
+    && VERSION=$(cat /tmp/versions/git.version) \
+    && mkdir git \
+    && wget -qO- "https://github.com/git/git/archive/v$VERSION.tar.gz" | tar --strip-component=1 -xz -C /tmp/git  \
+    && cd /tmp/git \
+    && make configure \
+    && ./configure --prefix=/usr/local \
+    && make -j$PARALLEL_BUILD \
+    && make install \
+    && rm -rf /tmp/git
+
+# ===========
+# == NINJA ==
+# ===========
+
+# Install latest version of ninja
+RUN cd /tmp \
+    && VERSION=$(cat /tmp/versions/ninja.version) \
+    && mkdir ninja \
+    && wget -qO- "https://github.com/ninja-build/ninja/archive/v$VERSION.tar.gz" | tar --strip-component=1 -xz -C /tmp/ninja \
+    && cd /tmp/ninja \
+    && cmake -Bbuild-cmake -H. \
+    && cmake --build build-cmake --parallel $PARALLEL_BUILD \
+    && cmake --install build-cmake \
+    && rm -rf /tmp/ninja
+
+# ==========
+# == LCOV ==
+# ==========
+
+# Install lcov dependencies
+#RUN cd /tmp \
+#    && echo | perl -MCPAN -e 'install Capture::Tiny' \
+#    && perl -MCPAN -e 'install DateTime'
+
+RUN cd /tmp \
+    && VERSION=$(cat /tmp/versions/lcov.version) \
+    && mkdir lcov \
+    && wget -qO- "https://github.com/linux-test-project/lcov/releases/download/v$VERSION/lcov-$VERSION.tar.gz" | tar --strip-component=1 -xz -C /tmp/lcov \
+    && cd /tmp/lcov \
+    && make install \
+    && cd /tmp \
+    && rm -rf /tmp/lcov
+
+# =================
+# == SETUP VCPKG ==
+# =================
+
+# Create a NuGet configuration file into /etc/opt/NuGet/Config
+ENV NUGET_COMMON_APPLICATION_DATA=/etc/opt
+
+RUN cd /tmp \
+    && VERSION=$(cat /tmp/versions/vcpkg.version) \
+    && git clone --depth 1 --branch $VERSION https://github.com/microsoft/vcpkg.git \
+    && cd /tmp/vcpkg \
+    && ./bootstrap-vcpkg.sh --disableMetrics \
+    && NUGET=$(./vcpkg fetch nuget | tail -1) \
+    && NUGET_CONFIG="$NUGET_COMMON_APPLICATION_DATA/NuGet/Config" \
+    && echo "NUGET is at $NUGET" \
+    && mkdir -p $NUGET_COMMON_APPLICATION_DATA/NuGet/ \
+    && touch $NUGET_CONFIG \
+    && echo '<?xml version="1.0" encoding="utf-8"?>' >> $NUGET_CONFIG \
+    && echo '<configuration>'  >> $NUGET_CONFIG \
+    && echo '</configuration>' >> $NUGET_CONFIG \
+    && mono $NUGET config -ConfigFile $NUGET_CONFIG \
+    && mono $NUGET sources Add -Name Artifactory -Source https://artifactory.evs.tv/artifactory/api/nuget/evs-vcpkg-build-nuget -ConfigFile $NUGET_CONFIG \
+    && chmod 666 $NUGET_CONFIG \
+    && rm -rf /tmp/vcpkg
+
+# Register environment variables
+ENV VCPKG_USE_NUGET_CACHE=1
+ENV VCPKG_BINARY_SOURCES="default,readwrite;nugetconfig,/etc/opt/NuGet/Config,read"
+
+# ==============
+# == APPIMAGE ==
+# ==============
+
+RUN dnf install -y \
+    desktop-file-utils \
+    fuse \
+    fuse-libs \
+    squashfs-tools \
+    && dnf clean all  \
+    && rm -rf /var/cache/dnf
+
+# Get the linuxdeploy tool to create AppImage and
+# remove the "strip" binary bundled with it as we
+# are going to cross-compile.
+RUN cd /tmp \
+    && VERSION=$(cat /tmp/versions/linuxdeploy.version) \
+    && wget https://github.com/linuxdeploy/linuxdeploy/releases/download/${VERSION}/linuxdeploy-x86_64.AppImage \
+    && chmod 755 /tmp/linuxdeploy-x86_64.AppImage \
+    && /tmp/linuxdeploy-x86_64.AppImage --appimage-extract \
+    && rm /tmp/squashfs-root/usr/bin/strip \
+    && /tmp/squashfs-root/plugins/linuxdeploy-plugin-appimage/appimagetool-prefix/usr/bin/appimagetool -gn squashfs-root/ \
+    && rm -r /tmp/squashfs-root \
+    && mv /tmp/linuxdeploy-x86_64.AppImage /usr/local/bin/
+
+# Remove versions folder
+RUN rm -rf /tmp/versions/
+
+# ========================
+# == INSTALL TOOLCHAINS ==
+# ========================
+
+# =========
+# == P6X ==
+# =========
+
+# Download SDK
+ADD https://artifactory.evs.tv:443/artifactory/evs-hw-release-generic/SDK/XT-NG/p6x/evs-p6x-sdk-1.2.4.98.tar.gz /tmp/sdk.tar.gz
+
+# Unpack it and relocate it (in case of SDK)
+RUN mkdir -p /opt/sdk/p6x \
+    && tar --strip-component=1 -xzf /tmp/sdk.tar.gz -C /opt/sdk/p6x \
+    && /opt/sdk/p6x/relocate-sdk.sh \
+    && rm -rf /tmp/sdk.tar.gz
+
+# Add the toolchain file
+ADD toolchains/p6x_toolchain.cmake /opt/sdk/p6x/toolchain.cmake
+
+# Register it
+ENV P6X_TOOLCHAIN_FILE="/opt/sdk/p6x/toolchain.cmake"
+
+# =========
+# == R6X ==
+# =========
+
+# Download SDK
+ADD https://artifactory.evs.tv:443/artifactory/evs-hw-release-generic/Dev/toolchains/arm/gcc-13.3.1-2024-06-evs.02-x86_64-arm-evs-linux-gnueabihf.tar.gz /tmp/sdk.tar.gz
+
+# Unpack it
+RUN mkdir -p /opt/sdk/r6x \
+    && tar --strip-component=1 -xzf /tmp/sdk.tar.gz -C /opt/sdk/r6x \
+    && rm -rf /tmp/sdk.tar.gz
+
+# Add the toolchain file
+ADD toolchains/r6x_toolchain.cmake /opt/sdk/r6x/toolchain.cmake
+
+# Register it
+ENV R6X_TOOLCHAIN_FILE="/opt/sdk/r6x/toolchain.cmake"
+
+# =========
+# == V6X ==
+# =========
+
+# Download SDK
+ADD https://artifactory.evs.tv:443/artifactory/evs-hw-release-generic/Dev/toolchains/aarch64/gcc-13.3.1-2024.06-evs.02-aarch64-linux-gnu.tar.gz /tmp/sdk.tar.gz
+
+# Unpack it
+RUN mkdir -p /opt/sdk/v6x \
+    && tar --strip-component=1 -xzf /tmp/sdk.tar.gz -C /opt/sdk/v6x \
+    && rm -rf /tmp/sdk.tar.gz
+
+# Add the toolchain file
+ADD toolchains/v6x_toolchain.cmake /opt/sdk/v6x/toolchain.cmake
+
+# Register it
+ENV V6X_TOOLCHAIN_FILE="/opt/sdk/v6x/toolchain.cmake"
+
+# =========
+# == N6X ==
+# =========
+
+# Currently the N6X has the same compiler as the V6X
+#RUN cd /opt/sdk \
+#    && ln -s v6x n6x
+
+# Add the toolchain file
+ADD toolchains/n6x_toolchain.cmake /opt/sdk/n6x/toolchain.cmake
+
+# Register it
+ENV N6X_TOOLCHAIN_FILE="/opt/sdk/n6x/toolchain.cmake"
+
+# ===============
+# == EVS LINUX ==
+# ===============
+# Add the toolchain file
+ADD toolchains/pc_toolchain.cmake /opt/sdk/evs_linux/toolchain.cmake
+
+# Register it
+ENV EVS_LINUX_TOOLCHAIN_FILE="/opt/sdk/evs_linux/toolchain.cmake"

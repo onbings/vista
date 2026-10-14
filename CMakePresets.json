@@ -1,0 +1,270 @@
+{
+  "version": 4,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 23,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "vcpkg",
+      "hidden": true,
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "cacheVariables": {
+        "VCPKG_OVERLAY_TRIPLETS": "${sourceDir}/environment/vcpkg/triplets",
+        "VCPKG_OVERLAY_PORTS": "${sourceDir}/vcpkg-overlays"
+      }
+    },
+    {
+      "name": "release",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+    {
+      "name": "debug",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "static",
+      "hidden": true,
+      "cacheVariables": {
+        "BUILD_SHARED_LIBS": "OFF"
+      }
+    },
+    {
+      "name": "dynamic",
+      "hidden": true,
+      "cacheVariables": {
+        "BUILD_SHARED_LIBS": "ON"
+      }
+    },
+    {
+      "name": "windows",
+      "hidden": true,
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [
+            "Windows"
+          ]
+        }
+      }
+    },
+    {
+      "name": "linux",
+      "hidden": true,
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "hostOS": [
+            "Linux"
+          ]
+        },
+        "microsoft.com/VisualStudioRemoteSettings/CMake/1.0": {
+          "sourceDir": "$env{HOME}/.vs/$ms{projectDirName}"
+        }
+      }
+    },
+    {
+      "name": "n6x-platform",
+      "hidden": true,
+      "condition": {
+        "type": "matches",
+        "string": "$env{N6X_TOOLCHAIN_FILE}",
+        "regex": "toolchain.cmake$"
+      },
+      "inherits": [
+        "linux"
+      ],
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "evs-x64-n6x-linux",
+        "VCPKG_HOST_TRIPLET": "evs-x64-linux",
+        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "$env{N6X_TOOLCHAIN_FILE}"
+      }
+    },
+    {
+      "name": "p6x-platform",
+      "hidden": true,
+      "condition": {
+        "type": "matches",
+        "string": "$env{P6X_TOOLCHAIN_FILE}",
+        "regex": "toolchain.cmake$"
+      },
+      "inherits": [
+        "linux"
+      ],
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "evs-x64-p6x-linux",
+        "VCPKG_HOST_TRIPLET": "evs-x64-linux",
+        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "$env{P6X_TOOLCHAIN_FILE}"
+      }
+    },
+    {
+      "name": "r6x-platform",
+      "hidden": true,
+      "condition": {
+        "type": "matches",
+        "string": "$env{R6X_TOOLCHAIN_FILE}",
+        "regex": "toolchain.cmake$"
+      },
+      "inherits": [
+        "linux"
+      ],
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "evs-x32-r6x-linux",
+        "VCPKG_HOST_TRIPLET": "evs-x64-linux",
+        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "$env{R6X_TOOLCHAIN_FILE}"
+      }
+    },
+    {
+      "name": "v6x-platform",
+      "hidden": true,
+      "condition": {
+        "type": "matches",
+        "string": "$env{V6X_TOOLCHAIN_FILE}",
+        "regex": "toolchain.cmake$"
+      },
+      "inherits": [
+        "linux"
+      ],
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "evs-x64-v6x-linux",
+        "VCPKG_HOST_TRIPLET": "evs-x64-linux",
+        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "$env{V6X_TOOLCHAIN_FILE}"
+      }
+    },
+    {
+      "name": "pc-linux",
+      "hidden": true,
+      "inherits": [
+        "linux"
+      ],
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "evs-x64-linux",
+        "VCPKG_HOST_TRIPLET": "evs-x64-linux"
+      }
+    },
+    {
+      "name": "pc-windows",
+      "hidden": true,
+      "inherits": [
+        "windows"
+      ],
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "evs-x64-windows",
+        "VCPKG_HOST_TRIPLET": "evs-x64-windows"
+      }
+    },
+    {
+      "name": "all",
+      "hidden": true,
+      "inherits": [
+        "vcpkg",
+        "static"
+      ]
+    },
+    {
+      "name": "all-n6x-release",
+      "inherits": [
+        "all",
+        "n6x-platform",
+        "release"
+      ]
+    },
+    {
+      "name": "all-n6x-debug",
+      "inherits": [
+        "all",
+        "n6x-platform",
+        "debug"
+      ]
+    },
+    {
+      "name": "all-p6x-release",
+      "inherits": [
+        "all",
+        "p6x-platform",
+        "release"
+      ]
+    },
+    {
+      "name": "all-p6x-debug",
+      "inherits": [
+        "all",
+        "p6x-platform",
+        "debug"
+      ]
+    },
+    {
+      "name": "all-r6x-release",
+      "inherits": [
+        "all",
+        "r6x-platform",
+        "release"
+      ]
+    },
+    {
+      "name": "all-r6x-debug",
+      "inherits": [
+        "all",
+        "r6x-platform",
+        "debug"
+      ]
+    },
+    {
+      "name": "all-v6x-release",
+      "inherits": [
+        "all",
+        "v6x-platform",
+        "release"
+      ]
+    },
+    {
+      "name": "all-v6x-debug",
+      "inherits": [
+        "all",
+        "v6x-platform",
+        "debug"
+      ]
+    },
+    {
+      "name": "all-pc-linux-release",
+      "inherits": [
+        "all",
+        "pc-linux",
+        "release"
+      ]
+    },
+    {
+      "name": "all-pc-linux-debug",
+      "inherits": [
+        "all",
+        "pc-linux",
+        "debug"
+      ]
+    },
+    {
+      "name": "all-pc-windows",
+      "inherits": [
+        "all",
+        "pc-windows"
+      ],
+      "cacheVariables": {
+        "Python_EXECUTABLE": "${sourceDir}/venv/Scripts/python.exe"
+      }
+    }
+  ]
+}

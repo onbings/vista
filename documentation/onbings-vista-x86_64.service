@@ -1,0 +1,25 @@
+[Unit]
+Description=VISTA : Vision Intelligence, Statistics, and Tracking Analysis service
+#After=network.target
+After=multi-user.target
+StartLimitBurst=7
+StartLimitIntervalSec=300
+
+[Service]
+#Use Type=notify and WatchdogSec=90 if built with -DVISTA_USE_SYSTEMD_NOTIFY
+#Type=notify 
+#WatchdogSec=90
+Type=exec
+#Environment="LD_LIBRARY_PATH=./assets/axelera/venv/lib"
+#Sleep for 45 seconds to let hardware and udev settle for axelera driver.
+# Sleep only on the first start after a reboot: /run is tmpfs (cleared each boot), so the marker is
+# absent on a cold boot (hardware/udev still settling -> wait 45s) but present on any later
+# restart/reset within the same boot (hardware already up -> skip the wait).
+#ExecStartPre=/bin/sh -c 'if [ ! -e /run/onbings-vista.started ]; then sleep 45; fi; touch /run/onbings-vista.started'
+ExecStart=/opt/onbings/ext/bin/onbings-vista-service-x86_64.AppImage --lis=tcp://0.0.0.0:7000 --cp=./assets/ssl/certs/vista-cert.crt --pkp=./assets/ssl/private/vista-cert.key
+WorkingDirectory=/opt/onbings
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

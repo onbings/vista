@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# Create a symlink to the strip binary of the toolchain
+mkdir -p '@CMAKE_BINARY_DIR@/bin/'
+ln -s @CMAKE_STRIP@ @CMAKE_BINARY_DIR@/bin/strip
+
+# Set it as first pick in the path
+PATH=@CMAKE_BINARY_DIR@/bin:$PATH @LINUXDEPLOY_COMMAND@ "$@"

@@ -1,0 +1,4 @@
+onbings-vista package provides CMake targets:
+
+  find_package(onbings-vista REQUIRED)
+  target_link_libraries("target" PRIVATE ONBINGS::onbings-vista)

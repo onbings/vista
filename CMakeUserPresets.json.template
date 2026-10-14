@@ -1,0 +1,25 @@
+{
+  "version": 4,
+  "cmakeMinimumRequired": {
+    "major" : 3,
+    "minor" : 23,
+    "patch" : 0
+  },
+  "configurePresets" : [
+    {
+      "name": "custom",
+      "hidden": true,
+      "inherits": [ "vcpkg", "static" ],
+      "cacheVariables": {
+        "SOLUTION": "custom",
+        "VCPKG_MANIFEST_FEATURES": "gtest"
+      }
+    },
+
+    { "name": "custom-p6x-release",       "inherits": [ "custom", "p6x-platform", "release" ] },
+    { "name": "custom-p6x-debug",         "inherits": [ "custom", "p6x-platform", "debug"   ] },
+    { "name": "custom-pc-linux-release",  "inherits": [ "custom", "pc-linux",     "release" ] },
+    { "name": "custom-pc-linux-debug",    "inherits": [ "custom", "pc-linux",     "debug"   ] },
+    { "name": "custom-pc-windows-debug",  "inherits": [ "custom", "pc-windows"              ] }
+  ]
+}

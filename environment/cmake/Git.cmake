@@ -1,0 +1,40 @@
+find_program(GIT git)
+
+# git not found
+if(${GIT} STREQUAL "GIT-NOTFOUND")
+  return()
+endif()
+
+set(SOURCE_CONTROL_TYPE "Git")
+
+# Get the branch
+execute_process(
+  COMMAND           ${GIT} rev-parse --abbrev-ref HEAD
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  OUTPUT_VARIABLE   SOURCE_CONTROL_BRANCH
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+# Get the commit (short)
+execute_process(
+  COMMAND           ${GIT} rev-parse --short HEAD
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  OUTPUT_VARIABLE   SOURCE_CONTROL_COMMIT_SHORT
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+# Get the commit (full)
+execute_process(
+  COMMAND           ${GIT} rev-parse HEAD
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  OUTPUT_VARIABLE   SOURCE_CONTROL_COMMIT_FULL
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+# Get the URL
+execute_process(
+  COMMAND           ${GIT} config --get remote.origin.url
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  OUTPUT_VARIABLE   SOURCE_CONTROL_URL
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)

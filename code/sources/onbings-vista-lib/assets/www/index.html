@@ -1,0 +1,1569 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VISTA Control</title>
+
+    <!-- Bootstrap 5.3 + Icons (CDN) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        crossorigin="anonymous" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+
+    <style>
+        :root {
+            --vista-accent: #6c8cff;
+            --vista-accent-2: #b06cff;
+        }
+
+        body {
+            min-height: 100vh;
+            background:
+                radial-gradient(1200px 600px at 110% -10%, rgba(176, 108, 255, 0.12), transparent 60%),
+                radial-gradient(1000px 500px at -10% 0%, rgba(108, 140, 255, 0.12), transparent 55%);
+        }
+
+        .brand-gradient {
+            background: linear-gradient(90deg, var(--vista-accent), var(--vista-accent-2));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+        }
+
+        .glass-card {
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(128, 128, 128, 0.18);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+            background: #6c757d;
+            box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+            transition: background .3s ease, box-shadow .3s ease;
+        }
+
+        .status-dot.online {
+            background: #2ecc71;
+            box-shadow: 0 0 0 4px rgba(46, 204, 113, .18);
+        }
+
+        .status-dot.offline {
+            background: #e74c3c;
+            box-shadow: 0 0 0 4px rgba(231, 76, 60, .18);
+        }
+
+        .status-dot.connecting {
+            background: #f1c40f;
+            box-shadow: 0 0 0 4px rgba(241, 196, 15, .18);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1
+            }
+
+            50% {
+                opacity: .45
+            }
+
+            100% {
+                opacity: 1
+            }
+        }
+
+        /* Channel tile */
+        .channel-tile {
+            position: relative;
+            border: 1px solid rgba(128, 128, 128, .22);
+            border-radius: .9rem;
+            padding: .85rem .9rem;
+            transition: transform .12s ease, border-color .15s ease, box-shadow .15s ease, background .15s ease;
+            cursor: pointer;
+            user-select: none;
+            overflow: hidden;
+        }
+
+        .channel-tile:hover {
+            transform: translateY(-2px);
+            border-color: var(--vista-accent);
+        }
+
+        .channel-tile.monitored {
+            border-color: var(--vista-accent);
+            box-shadow: inset 0 0 0 1px var(--vista-accent), 0 6px 18px rgba(108, 140, 255, .18);
+        }
+
+        .channel-tile.focus {
+            border-color: #2ecc71;
+            box-shadow: inset 0 0 0 2px #2ecc71, 0 6px 18px rgba(46, 204, 113, .22);
+        }
+
+        /* Display controls tile: red frame (like a selected channel), not clickable */
+        .channel-tile.control-tile {
+            cursor: default;
+            border-color: #ef4444;
+            box-shadow: inset 0 0 0 2px #ef4444, 0 6px 18px rgba(239, 68, 68, .22);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .channel-tile.control-tile:hover {
+            transform: none;
+            border-color: #ef4444;
+        }
+
+        /* Reset button: black/transparent by default, full red while pressed (like Graphics/Shell). */
+        #btnResetApp:active {
+            background: #ef4444 !important;
+            border-color: #ef4444 !important;
+            color: #fff !important;
+        }
+
+        .channel-tile .tile-idx {
+            font-size: 1.4rem;
+            font-weight: 800;
+            line-height: 1;
+            opacity: .9;
+        }
+
+        .channel-tile .ai-ribbon {
+            position: absolute;
+            top: 8px;
+            right: -28px;
+            transform: rotate(45deg);
+            background: linear-gradient(90deg, var(--vista-accent-2), var(--vista-accent));
+            color: #fff;
+            font-size: .62rem;
+            font-weight: 700;
+            padding: 2px 32px;
+            letter-spacing: 1px;
+            display: none;
+        }
+
+        .channel-tile.ai .ai-ribbon {
+            display: block;
+        }
+
+        .log-console {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: .8rem;
+            height: 240px;
+            max-height: 240px;
+            overflow-y: scroll;
+            border-radius: .6rem;
+            padding: .6rem .8rem;
+            background: rgba(0, 0, 0, .35);
+            border: 1px solid rgba(128, 128, 128, .2);
+        }
+
+        [data-bs-theme="light"] .log-console {
+            background: rgba(0, 0, 0, .04);
+        }
+
+        .log-line {
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .log-INFO {
+            color: #6cc0ff;
+        }
+
+        .log-OK {
+            color: #4ade80;
+        }
+
+        .log-WARN {
+            color: #fbbf24;
+        }
+
+        .log-ERROR {
+            color: #f87171;
+        }
+
+        .log-API {
+            color: #c4a3ff;
+        }
+
+        .log-time {
+            opacity: .55;
+        }
+
+        .toast-container {
+            z-index: 1090;
+        }
+
+        .section-title {
+            font-size: .8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: .65;
+        }
+
+        .form-switch .form-check-input {
+            cursor: pointer;
+        }
+
+        .btn-accent {
+            background: linear-gradient(90deg, var(--vista-accent), var(--vista-accent-2));
+            border: none;
+            color: #fff;
+        }
+
+        .btn-accent:hover {
+            filter: brightness(1.08);
+            color: #fff;
+        }
+
+        .btn-streaming-active {
+            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+        }
+
+        .sticky-summary {
+            position: sticky;
+            top: 1rem;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .mono {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        }
+
+        .badge-soft {
+            background: rgba(108, 140, 255, .18);
+            color: var(--vista-accent);
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ===================== Navbar ===================== -->
+    <nav class="navbar navbar-expand-lg sticky-top glass-card mb-4" style="border-radius:0 0 1rem 1rem;">
+        <div class="container-fluid">
+            <span class="navbar-brand d-flex align-items-center gap-2">
+                <i class="bi bi-grid-3x3-gap-fill fs-4 brand-gradient"></i>
+                <span class="brand-gradient fs-4">VISTA</span>
+                <span class="d-none d-sm-inline text-secondary small">P6x Realtime Interface for Stream Monitoring
+                    Control Console</span>
+            </span>
+
+            <div class="d-flex align-items-center gap-2 ms-auto">
+                <div id="headerIndicators" class="d-flex align-items-center gap-2 me-2">
+                    <span class="badge rounded-pill text-bg-secondary" id="badgeModules"><i
+                            class="bi bi-hdd-stack me-1"></i>— modules</span>
+                    <span class="badge rounded-pill text-bg-secondary" id="badgeAxelera"><i
+                            class="bi bi-cpu me-1"></i>AI: unknown</span>
+                </div>
+
+                <span class="d-flex align-items-center small me-2">
+                    <span id="statusDot" class="status-dot offline"></span>
+                    <span id="statusText" class="text-secondary">Disconnected</span>
+                </span>
+
+                <!-- Documentation -->
+                <button class="btn btn-outline-secondary btn-sm" id="btnHelp" title="Open the user guide (F1)">
+                    <i class="bi bi-question-circle"></i>
+                </button>
+
+                <!-- Theme picker -->
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown"
+                        title="Theme">
+                        <i class="bi bi-palette"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li>
+                            <h6 class="dropdown-header">Appearance</h6>
+                        </li>
+                        <li><button class="dropdown-item" data-theme="dark"><i
+                                    class="bi bi-moon-stars me-2"></i>Dark</button></li>
+                        <li><button class="dropdown-item" data-theme="light"><i
+                                    class="bi bi-sun me-2"></i>Light</button></li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li>
+                            <h6 class="dropdown-header">Accent</h6>
+                        </li>
+                        <li><button class="dropdown-item" data-accent="indigo">Indigo / Violet</button></li>
+                        <li><button class="dropdown-item" data-accent="teal">Teal / Cyan</button></li>
+                        <li><button class="dropdown-item" data-accent="amber">Amber / Rose</button></li>
+                    </ul>
+                </div>
+
+                <!-- Settings -->
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown"
+                        data-bs-auto-close="outside" title="Settings">
+                        <i class="bi bi-gear"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" style="min-width: 16rem;">
+                        <li>
+                            <h6 class="dropdown-header">Profiles</h6>
+                        </li>
+                        <li>
+                            <div class="px-3 pb-2">
+                                <div class="input-group input-group-sm">
+                                    <select class="form-select" id="profileSelect"></select>
+                                    <button class="btn btn-outline-primary" id="btnProfileLoad" title="Load profile"><i
+                                            class="bi bi-box-arrow-in-down"></i></button>
+                                </div>
+                                <div class="d-flex gap-1 mt-2">
+                                    <button class="btn btn-sm btn-outline-success flex-grow-1" id="btnProfileSave"
+                                        title="Save to current profile"><i class="bi bi-save me-1"></i>Save</button>
+                                    <button class="btn btn-sm btn-outline-secondary flex-grow-1" id="btnProfileSaveAs"
+                                        title="Save as new profile"><i class="bi bi-plus-lg me-1"></i>Save as…</button>
+                                    <button class="btn btn-sm btn-outline-danger" id="btnProfileDelete"
+                                        title="Delete profile"><i class="bi bi-trash"></i></button>
+                                </div>
+                            </div>
+                        </li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li>
+                            <h6 class="dropdown-header">File</h6>
+                        </li>
+                        <li><button class="dropdown-item" id="btnExport"><i class="bi bi-download me-2"></i>Export to
+                                file…</button></li>
+                        <li><button class="dropdown-item" id="btnImport"><i class="bi bi-upload me-2"></i>Import from
+                                file…</button></li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li>
+                            <label class="dropdown-item d-flex align-items-center justify-content-between mb-0">
+                                <span><i class="bi bi-save me-2"></i>Auto-save</span>
+                                <input class="form-check-input ms-3" type="checkbox" id="chkAutoSave" checked>
+                            </label>
+                        </li>
+                        <li>
+                            <label class="dropdown-item d-flex align-items-center justify-content-between mb-0">
+                                <span><i class="bi bi-hdd-network me-2"></i>Use localhost tunnel</span>
+                                <input class="form-check-input ms-3" type="checkbox" id="chkUseLocalHost" checked>
+                            </label>
+                        </li>
+                        <li><button class="dropdown-item text-danger" id="btnReset"><i
+                                    class="bi bi-trash me-2"></i>Reset all</button></li>
+                    </ul>
+                </div>
+                <input type="file" id="importFile" accept="application/json" class="d-none">
+            </div>
+        </div>
+    </nav>
+
+
+
+    <!-- Toasts -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+        crossorigin="anonymous"></script>
+    <script>
+        (function () {
+            "use strict";
+
+            // ---------------------------------------------------------------------
+            // State
+            // ---------------------------------------------------------------------
+            const SETTINGS_KEY = "vistaControlSettings.v1";   // last-used settings (auto-restored)
+            const PROFILES_KEY = "vistaControlProfiles.v1";   // map of named profiles
+            const LASTPROFILE_KEY = "vistaControlLastProfile.v1";
+            let initializing = true;   // true until first restore completes (blocks premature saves)
+            const ACCENTS = {
+                indigo: ["#6c8cff", "#b06cff"],
+                teal: ["#22d3ee", "#2dd4bf"],
+                amber: ["#f59e0b", "#fb7185"],
+            };
+
+            const state = {
+                connected: false,
+                baseUrl: "",
+                config: null,            // raw config object from /config
+                axeleraAvailable: false,
+                streamerAvailable: false,
+                moduleIndex: 0,
+                monitorMask: 0,          // bit i => channel i monitored
+                focusChannel: -1,        // focus channel index (live one)
+                aiMask: 0,               // subset of monitorMask analysed by AI
+                model: "yolo",
+                aiEnabled: false,
+                autoApply: true,
+                autoSave: true,
+                useLocalHost: true,
+                theme: "dark",
+                accent: "indigo",
+                lastSnapshotPath: "",  // device path of the most recent capture (for download)
+                mvReset: false,        // reset counters after MV Info
+                // Per-module overlay bitmasks (index by moduleIndex)
+                // showConfigBitmask drives the camera name + video standard overlay on select_video.
+                showConfigBitmasks: [0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF],
+                showOsdBaseBitmasks: [0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF],
+                showOsdExtBitmasks: [0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF],
+                showVumeterFlags: [true, true, true, true, true, true],
+            };
+
+            function deriveEndpointFromBrowserLocation() {
+                const scheme = window.location.protocol === "https:" ? "https" : "http";
+                const host = window.location.host || "";
+                const baseUrl = host ? `${scheme}://${host}/vista/v1` : "";
+                return { baseUrl };
+            }
+
+            // ---------------------------------------------------------------------
+            // DOM helpers
+            // ---------------------------------------------------------------------
+            // Control elements were removed from the DOM; this stub absorbs any access so navbar logic never crashes.
+            const STUB = new Proxy(function () { }, { get: () => STUB, apply: () => STUB, set: () => true });
+            const $ = (id) => document.getElementById(id) || STUB;
+            const el = {
+                html: document.documentElement,
+                statusDot: $("statusDot"), statusText: $("statusText"),
+                badgeModules: $("badgeModules"), badgeAxelera: $("badgeAxelera"),
+                controlPanel: $("controlPanel"),
+                moduleSelect: $("moduleSelect"), channelGrid: $("channelGrid"),
+                chkAutoApply: $("chkAutoApply"),
+                btnSelectAll: $("btnSelectAll"), btnSelectNone: $("btnSelectNone"),
+                btnStreaming: $("btnStreaming"),
+                btnHostMode: $("btnHostMode"),
+                aiCard: $("aiCard"), aiBody: $("aiBody"), chkAiEnable: $("chkAiEnable"),
+                aiChannelChips: $("aiChannelChips"), btnApplyAi: $("btnApplyAi"),
+                sumModule: $("sumModule"), sumFocus: $("sumFocus"), sumMask: $("sumMask"),
+                sumAiMask: $("sumAiMask"), sumModel: $("sumModel"),
+                btnApplySelection: $("btnApplySelection"),
+                snapPath: $("snapPath"), btnSnapshot: $("btnSnapshot"),
+                btnDownloadSnap: $("btnDownloadSnap"), snapDownloadHint: $("snapDownloadHint"),
+                btnMvInfo: $("btnMvInfo"), btnMvLatency: $("btnMvLatency"), chkMvReset: $("chkMvReset"),
+                btnDisplayAcquire: $("btnDisplayAcquire"), btnDisplayRelease: $("btnDisplayRelease"), btnResetApp: $("btnResetApp"),
+                displayModeBadge: $("displayModeBadge"), displayControlCol: $("displayControlCol"),
+                logConsole: $("logConsole"), btnClearLog: $("btnClearLog"),
+                toastContainer: $("toastContainer"),
+                chkAutoSave: $("chkAutoSave"),
+                chkUseLocalHost: $("chkUseLocalHost"),
+                profileSelect: $("profileSelect"),
+                btnProfileLoad: $("btnProfileLoad"), btnProfileSave: $("btnProfileSave"),
+                btnProfileSaveAs: $("btnProfileSaveAs"), btnProfileDelete: $("btnProfileDelete"),
+                btnExport: $("btnExport"), btnImport: $("btnImport"),
+                importFile: $("importFile"), btnReset: $("btnReset"),
+                btnHelp: $("btnHelp"),
+            };
+
+            // ---------------------------------------------------------------------
+            // Logging + toasts
+            // ---------------------------------------------------------------------
+            function log(level, msg) {
+                const time = new Date().toLocaleTimeString();
+                const line = document.createElement("div");
+                line.className = "log-line";
+                line.innerHTML = `<span class="log-time">${time}</span> ` +
+                    `<span class="log-${level}">[${level}]</span> ` +
+                    escapeHtml(msg);
+                el.logConsole.appendChild(line);
+                el.logConsole.scrollTop = el.logConsole.scrollHeight;
+                // keep last 500 lines
+                while (el.logConsole.childElementCount > 512) el.logConsole.removeChild(el.logConsole.firstChild);
+            }
+            function escapeHtml(s) {
+                return String(s).replace(/[&<>"']/g, (c) =>
+                    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+            }
+
+            function toast(kind, title, msg) {
+                const colors = { ok: "text-bg-success", error: "text-bg-danger", warn: "text-bg-warning", info: "text-bg-primary" };
+                const icons = { ok: "check-circle-fill", error: "exclamation-octagon-fill", warn: "exclamation-triangle-fill", info: "info-circle-fill" };
+                const wrap = document.createElement("div");
+                wrap.className = `toast align-items-center border-0 ${colors[kind] || colors.info}`;
+                wrap.setAttribute("role", "alert");
+                wrap.innerHTML = `
+        <div class="d-flex">
+          <div class="toast-body">
+            <i class="bi bi-${icons[kind] || icons.info} me-2"></i>
+            <strong>${escapeHtml(title)}</strong>${msg ? " — " + escapeHtml(msg) : ""}
+          </div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>`;
+                el.toastContainer.appendChild(wrap);
+                const t = new bootstrap.Toast(wrap, { delay: kind === "error" ? 6000 : 3500 });
+                t.show();
+                wrap.addEventListener("hidden.bs.toast", () => wrap.remove());
+            }
+
+            let streamingWindow = null;
+            let streamWindowMonitorId = null;
+
+            function setStreamingButtonState(isOpen) {
+                el.btnStreaming.classList.remove("btn-outline-primary", "btn-primary", "btn-dark", "btn-streaming-active");
+                if (isOpen) {
+                    el.btnStreaming.classList.add("btn-primary", "btn-streaming-active");
+                    el.btnStreaming.title = "Streaming window is open";
+                } else {
+                    el.btnStreaming.classList.add("btn-dark");
+                    el.btnStreaming.title = "Streaming window is closed";
+                }
+            }
+
+            function stopStreamingWindowMonitor() {
+                if (streamWindowMonitorId !== null) {
+                    window.clearInterval(streamWindowMonitorId);
+                    streamWindowMonitorId = null;
+                }
+            }
+
+            function startStreamingWindowMonitor() {
+                stopStreamingWindowMonitor();
+                streamWindowMonitorId = window.setInterval(() => {
+                    if (!streamingWindow || streamingWindow.closed) {
+                        streamingWindow = null;
+                        setStreamingButtonState(false);
+                        stopStreamingWindowMonitor();
+                    }
+                }, 500);
+            }
+
+            function isLocalBrowserHost(hostname) {
+                return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1" || hostname === "[::1]";
+            }
+
+            function openStreamingWindow() {
+                const streamUrlObj = new URL("streamer_av.html", window.location.href);
+                if (state.useLocalHost) {
+                    streamUrlObj.searchParams.set("useLocalHost", "1");
+                } else {
+                    streamUrlObj.searchParams.set("useLocalHost", "0");
+                }
+                const streamUrl = streamUrlObj.toString();
+                log("INFO", `Streaming button clicked. Target URL: ${streamUrl}`);
+
+                try {
+                    if (streamingWindow) {
+                        log("INFO", `Streaming window handle exists. closed=${streamingWindow.closed}`);
+                    } else {
+                        log("INFO", "No existing streaming window handle.");
+                    }
+
+                    if (streamingWindow && !streamingWindow.closed) {
+                        log("INFO", `Existing streaming window href='${streamingWindow.location.href}'`);
+                        if (streamingWindow.location.href !== streamUrl) {
+                            log("INFO", "Existing window URL differs. Navigating to streamer_av.html.");
+                            streamingWindow.location.href = streamUrl;
+                        } else {
+                            log("INFO", "Existing window already on streamer_av.html. Focusing only.");
+                        }
+                        streamingWindow.focus();
+                        setStreamingButtonState(true);
+                        startStreamingWindowMonitor();
+                        return;
+                    }
+                } catch (e) {
+                    log("WARN", `Cannot inspect existing streaming window handle: ${e.message}`);
+                    // Reopen a fresh window when previous handle cannot be inspected.
+                }
+
+                streamingWindow = window.open(streamUrl, "vista_streaming_window");
+                if (streamingWindow) {
+                    log("INFO", "window.open succeeded for streamer.html. Focusing window.");
+                    setStreamingButtonState(true);
+                    startStreamingWindowMonitor();
+                    streamingWindow.addEventListener("load", () => {
+                        setStreamingButtonState(true);
+                        log("INFO", "Streaming window load event received.");
+                    });
+                    streamingWindow.focus();
+                } else {
+                    log("WARN", "window.open returned null/undefined (popup likely blocked).");
+                    setStreamingButtonState(false);
+                    toast("warn", "Popup blocked", "Allow popups to open the streaming window.");
+                }
+            }
+
+            function renderHostModeUi() {
+                if (el.btnHostMode) {
+                    el.btnHostMode.classList.remove("btn-outline-info", "btn-info", "btn-outline-warning", "btn-warning");
+                    if (state.useLocalHost) {
+                        el.btnHostMode.classList.add("btn-info");
+                        el.btnHostMode.innerHTML = '<i class="bi bi-hdd-network me-1"></i>Host: localhost';
+                        el.btnHostMode.title = "Stream host mode: localhost (SSH tunnel)";
+                    } else {
+                        el.btnHostMode.classList.add("btn-warning");
+                        el.btnHostMode.innerHTML = '<i class="bi bi-globe2 me-1"></i>Host: full IP';
+                        el.btnHostMode.title = "Stream host mode: backend endpoint host";
+                    }
+                }
+                if (el.chkUseLocalHost) {
+                    el.chkUseLocalHost.checked = state.useLocalHost;
+                }
+            }
+
+            // ---------------------------------------------------------------------
+            // REST API
+            // ---------------------------------------------------------------------
+            async function api(method, path, params) {
+                const url = new URL(state.baseUrl + path);
+                if (params) Object.entries(params).forEach(([k, v]) => {
+                    if (v !== undefined && v !== null && v !== "") url.searchParams.set(k, v);
+                });
+                const full = url.toString();
+                log("API", `${method} ${full}`);
+                let res, body;
+                try {
+                    res = await fetch(full, { method, headers: { "Accept": "application/json" } });
+                } catch (e) {
+                    log("ERROR", `Network error on ${method} ${path}: ${e.message}`);
+                    throw new Error(`Network error: ${e.message}. Check host/port, that the device is reachable, and CORS is enabled.`);
+                }
+                const text = await res.text();
+                try { body = text ? JSON.parse(text) : {}; } catch { body = { raw: text }; }
+                if (body === null || typeof body !== "object") {
+                    body = { value: body };
+                }
+                if (!res.ok) {
+                    const m = body && body.msg ? body.msg : `HTTP ${res.status}`;
+                    log("ERROR", `${method} ${path} -> ${res.status}: ${m}`);
+                    throw new Error(m);
+                }
+                if (body && typeof body.code === "number" && body.code !== 0) {
+                    log("ERROR", `${method} ${path} -> code ${body.code}: ${body.msg || ""}`);
+                    throw new Error(body.msg || `API error code ${body.code}`);
+                }
+                const codeStr = (typeof body.code === "number") ? ` [code=${body.code}]` : "";
+                log("OK", `${method} ${path}${codeStr} -> ${body.msg || "OK"}`);
+                return body;
+            }
+
+            // ---------------------------------------------------------------------
+            // Connect / Disconnect
+            // ---------------------------------------------------------------------
+            function setStatus(s) {
+                el.statusDot.className = "status-dot " + s;
+                el.statusText.textContent =
+                    s === "online" ? "Connected" : s === "connecting" ? "Connecting…" : "Disconnected";
+                el.statusText.className = s === "online" ? "text-success" : s === "connecting" ? "text-warning" : "text-secondary";
+            }
+
+            async function connect() {
+                const endpoint = deriveEndpointFromBrowserLocation();
+                state.baseUrl = endpoint.baseUrl;
+                if (!state.baseUrl) {
+                    setStatus("offline");
+                    toast("error", "Connection failed", "Cannot derive endpoint from browser URL.");
+                    return;
+                }
+
+                setStatus("connecting");
+                log("INFO", `Connecting to ${state.baseUrl} …`);
+                try {
+                    const resp = await api("GET", "/config");
+                    const cfg = resp.config || resp;
+                    state.config = cfg;
+                    state.axeleraAvailable = !!cfg.axeleraAvailable;
+                    state.streamerAvailable = !!cfg.streamerAvailable;
+                    state.connected = true;
+
+                    // Hide streaming buttons if streamer is not available
+                    if (!state.streamerAvailable) {
+                        if (el.btnHostMode) el.btnHostMode.style.display = "none";
+                        if (el.btnStreaming) el.btnStreaming.style.display = "none";
+                        log("INFO", "Streaming subsystem not available (ONBINGS_VISTA_ADD_STREAMER not defined)");
+                    }
+
+                    setStatus("online");
+                    el.controlPanel.classList.remove("d-none");
+
+                    const mods = cfg.modules || [];
+                    el.badgeModules.innerHTML = `<i class="bi bi-hdd-stack me-1"></i>${mods.length} module(s)`;
+                    el.badgeModules.className = "badge rounded-pill text-bg-primary";
+                    el.badgeAxelera.innerHTML = `<i class="bi bi-cpu me-1"></i>AI: ${state.axeleraAvailable ? "available" : "n/a"}`;
+                    el.badgeAxelera.className = "badge rounded-pill " + (state.axeleraAvailable ? "text-bg-success" : "text-bg-secondary");
+
+                    log("INFO", `Selection restored from browser settings: module=${state.moduleIndex}, focus=${state.focusChannel >= 0 ? "CH" + state.focusChannel : "none"}, mask=${hex32(state.monitorMask)}`);
+
+                    buildModuleSelect();
+                    // restore previous module if valid
+                    if (!mods.some((m, i) => moduleIndexOf(m, i) === state.moduleIndex)) state.moduleIndex = mods.length ? moduleIndexOf(mods[0], 0) : 0;
+                    normalizeRestoredSelection();
+                    el.moduleSelect.value = String(state.moduleIndex);
+                    renderModule();
+                    applyAiAvailability();
+
+                    // Re-apply last-used selection on reconnect so backend/stream state matches restored control state.
+                    if (state.focusChannel >= 0 && (state.monitorMask & (1 << state.focusChannel))) {
+                        await applySelection(true);
+                        log("INFO", `Selection restored to backend: module=${state.moduleIndex}, focus=CH${state.focusChannel}, mask=${hex32(state.monitorMask)}`);
+                    }
+
+                    toast("ok", "Connected", `${mods.length} module(s)${state.axeleraAvailable ? ", AI ready" : ""}`);
+                    log("INFO", `Config loaded: ${mods.length} module(s), AI ${state.axeleraAvailable ? "available" : "not available"}.`);
+                    saveSettings();
+                    refreshDisplayStatus();
+                } catch (e) {
+                    setStatus("offline");
+                    toast("error", "Connection failed", e.message);
+                }
+            }
+
+            // ---------------------------------------------------------------------
+            // Module + channel rendering
+            // ---------------------------------------------------------------------
+            function moduleIndexOf(m, fallback) {
+                return (m && typeof m.index === "number") ? m.index : fallback;
+            }
+            function channelIndexOf(ch, fallback) {
+                return (ch && typeof ch.index === "number") ? ch.index : fallback;
+            }
+            function currentModule() {
+                const mods = (state.config && state.config.modules) || [];
+                return mods.find((m, i) => moduleIndexOf(m, i) === state.moduleIndex) || mods[0] || { index: 0, channels: [] };
+            }
+            function getChannelConfigByIndex(idx) {
+                const channels = currentModule().channels || [];
+                return channels.find((ch, i) => channelIndexOf(ch, i) === idx) || null;
+            }
+            function validChannelMaskForCurrentModule() {
+                let mask = 0;
+                (currentModule().channels || []).forEach((ch, i) => {
+                    const idx = channelIndexOf(ch, i);
+                    if (idx >= 0 && idx < 32) mask |= (1 << idx);
+                });
+                return mask >>> 0;
+            }
+            function normalizeRestoredSelection() {
+                const validMask = validChannelMaskForCurrentModule();
+                state.monitorMask &= validMask;
+                state.aiMask &= state.monitorMask;
+
+                const focusValid = state.focusChannel >= 0 && (state.monitorMask & (1 << state.focusChannel));
+                if (!focusValid) state.focusChannel = firstMonitored();
+            }
+
+            function buildModuleSelect() {
+                const mods = (state.config && state.config.modules) || [];
+                el.moduleSelect.innerHTML = "";
+                mods.forEach((m, i) => {
+                    const idx = moduleIndexOf(m, i);
+                    const opt = document.createElement("option");
+                    opt.value = String(idx);
+                    opt.textContent = `Module ${idx} (${(m.channels || []).length} ch)`;
+                    el.moduleSelect.appendChild(opt);
+                });
+            }
+
+            function renderModule() {
+                const mod = currentModule();
+                const channels = mod.channels || [];
+                el.channelGrid.innerHTML = "";
+
+                channels.forEach((ch, i) => {
+                    const idx = channelIndexOf(ch, i);
+                    const bit = 1 << idx;
+                    const monitored = !!(state.monitorMask & bit);
+                    const isFocus = state.focusChannel === idx;
+                    const isAi = !!(state.aiMask & bit);
+                    const showConfigBit = state.showConfigBitmasks[state.moduleIndex] & bit;
+                    const showOsdBaseBit = state.showOsdBaseBitmasks[state.moduleIndex] & bit;
+                    const showOsdExtBit = state.showOsdExtBitmasks[state.moduleIndex] & bit;
+                    const showVumeterBit = !!state.showVumeterFlags[state.moduleIndex] && isFocus;
+
+                    const col = document.createElement("div");
+                    col.className = "col-12 col-sm-6 col-md-4";
+                    col.innerHTML = `
+          <div class="channel-tile ${monitored ? "monitored" : ""} ${isFocus ? "focus" : ""} ${isAi ? "ai" : ""}" data-ch="${idx}">
+            <span class="ai-ribbon">AI</span>
+            <div class="d-flex align-items-start justify-content-between">
+              <div>
+                <div class="tile-idx">CH${idx}</div>
+                <div class="fw-semibold text-truncate" style="max-width: 180px" title="${escapeHtml(ch.name || "")}">${escapeHtml(ch.name || "Channel " + idx)}</div>
+              </div>
+              <div class="text-end">
+                <span class="badge ${ch.isPlayer ? "text-bg-info" : "text-bg-warning"}">${ch.isPlayer ? "Player" : "Recorder"}</span>
+                <div class="small text-secondary mt-1 mono">${escapeHtml(ch.videoStandard || "—")}</div>
+              </div>
+            </div>
+            <div class="d-flex flex-wrap gap-2 mt-2 small" onclick="event.stopPropagation()">
+              <div class="form-check mb-0">
+                <input class="form-check-input chk-monitor" type="checkbox" data-ch="${idx}" id="mon${idx}" ${monitored ? "checked" : ""}>
+                <label class="form-check-label" for="mon${idx}" title="Monitor">Mon</label>
+              </div>
+              <div class="form-check mb-0">
+                <input class="form-check-input rb-focus" type="radio" name="focusCh" data-ch="${idx}" id="foc${idx}" ${isFocus ? "checked" : ""} ${monitored ? "" : "disabled"}>
+                <label class="form-check-label" for="foc${idx}" title="Focus">Foc</label>
+              </div>
+              <div class="form-check mb-0">
+                <input class="form-check-input chk-config" type="checkbox" data-ch="${idx}" id="cfg${idx}" ${showConfigBit ? "checked" : ""}>
+                <label class="form-check-label" for="cfg${idx}" title="Show camera name and video standard">Cfg</label>
+              </div>
+              <div class="form-check mb-0">
+                <input class="form-check-input chk-vumeter" type="checkbox" data-ch="${idx}" id="vum${idx}" ${showVumeterBit ? "checked" : ""} ${isFocus ? "" : "disabled"}>
+                <label class="form-check-label" for="vum${idx}" title="Show VU meter">VU</label>
+              </div>
+              <div class="form-check mb-0">
+                <input class="form-check-input chk-osdbase" type="checkbox" data-ch="${idx}" id="osdb${idx}" ${showOsdBaseBit ? "checked" : ""}>
+                <label class="form-check-label" for="osdb${idx}" title="Show base OSD">B-OSD</label>
+              </div>
+              <div class="form-check mb-0">
+                <input class="form-check-input chk-osdext" type="checkbox" data-ch="${idx}" id="osde${idx}" ${showOsdExtBit ? "checked" : ""}>
+                <label class="form-check-label" for="osde${idx}" title="Show extended OSD">E-OSD</label>
+              </div>
+            </div>
+          </div>`;
+                    el.channelGrid.appendChild(col);
+                });
+
+                // Keep the red-framed display-control tile as the last cell (right of the last channel).
+                if (el.displayControlCol) el.channelGrid.appendChild(el.displayControlCol);
+                // tile click toggles monitor
+                el.channelGrid.querySelectorAll(".channel-tile").forEach((tile) => {
+                    tile.addEventListener("click", () => toggleMonitor(parseInt(tile.dataset.ch, 10)));
+                });
+                el.channelGrid.querySelectorAll(".chk-monitor").forEach((c) => {
+                    c.addEventListener("change", () => toggleMonitor(parseInt(c.dataset.ch, 10), c.checked));
+                });
+                el.channelGrid.querySelectorAll(".rb-focus").forEach((r) => {
+                    r.addEventListener("click", (event) => {
+                        const idx = parseInt(r.dataset.ch, 10);
+                        if (state.focusChannel === idx) {
+                            event.preventDefault();
+                            clearFocus();
+                        }
+                    });
+                    r.addEventListener("change", () => { setFocus(parseInt(r.dataset.ch, 10)); });
+                });
+                el.channelGrid.querySelectorAll(".chk-config").forEach((c) => {
+                    c.addEventListener("change", () => setChannelOverlayFlag(parseInt(c.dataset.ch, 10), "config", c.checked));
+                });
+                el.channelGrid.querySelectorAll(".chk-osdbase").forEach((c) => {
+                    c.addEventListener("change", () => setChannelOverlayFlag(parseInt(c.dataset.ch, 10), "osdbase", c.checked));
+                });
+                el.channelGrid.querySelectorAll(".chk-osdext").forEach((c) => {
+                    c.addEventListener("change", () => setChannelOverlayFlag(parseInt(c.dataset.ch, 10), "osdext", c.checked));
+                });
+                el.channelGrid.querySelectorAll(".chk-vumeter").forEach((c) => {
+                    c.addEventListener("change", () => setShowVumeter(c.checked));
+                });
+
+                renderAiChips();
+                updateSummary();
+            }
+
+            function setChannelOverlayFlag(idx, type, value) {
+                const bit = 1 << idx;
+                const modIdx = state.moduleIndex;
+                if (type === "config") {
+                    if (value) state.showConfigBitmasks[modIdx] |= bit;
+                    else state.showConfigBitmasks[modIdx] &= ~bit;
+                } else if (type === "osdbase") {
+                    if (value) state.showOsdBaseBitmasks[modIdx] |= bit;
+                    else state.showOsdBaseBitmasks[modIdx] &= ~bit;
+                } else if (type === "osdext") {
+                    if (value) state.showOsdExtBitmasks[modIdx] |= bit;
+                    else state.showOsdExtBitmasks[modIdx] &= ~bit;
+                }
+                renderModule();
+                saveSettings();
+                if (state.autoApply && state.connected) applySelectionForChannel(idx, true);
+            }
+
+            function setShowVumeter(value) {
+                state.showVumeterFlags[state.moduleIndex] = !!value;
+                renderModule();
+                saveSettings();
+                if (state.autoApply && state.connected && state.focusChannel >= 0) {
+                    applySelectionForChannel(state.focusChannel, true);
+                }
+            }
+
+            function toggleMonitor(idx, forceOn) {
+                const bit = 1 << idx;
+                const willMonitor = (typeof forceOn === "boolean") ? forceOn : !(state.monitorMask & bit);
+                if (willMonitor) {
+                    state.monitorMask |= bit;
+                    // If no focus channel is set, make this channel the focus
+                    if (state.focusChannel === -1) state.focusChannel = idx;
+                } else {
+                    state.monitorMask &= ~bit;
+                    state.aiMask &= ~bit;                 // can't AI a non-monitored channel
+                    if (state.focusChannel === idx) {
+                        // Move focus to another monitored channel, or clear everything
+                        state.focusChannel = firstMonitored();
+                    }
+                }
+                renderModule();
+                saveSettings();
+                if (state.autoApply && state.connected) {
+                    if (state.focusChannel === -1) {
+                        // No monitored channels left: tell backend to stop
+                        api("POST", `/${state.moduleIndex}/0/select`, { channelMask: 0 }).catch(e => toast("error", "Clear failed", e.message));
+                    } else {
+                        applySelection(true);
+                    }
+                }
+            }
+
+            function setFocus(idx) {
+                if (!(state.monitorMask & (1 << idx))) return;
+                state.focusChannel = idx;
+                renderModule();
+                saveSettings();
+                if (state.autoApply && state.connected) applySelection(true);
+            }
+
+            function clearFocus() {
+                state.focusChannel = -1;
+                renderModule();
+                saveSettings();
+                if (state.autoApply && state.connected) applySelection(true);
+            }
+
+            async function applySelectionForChannel(channelIdx, silent) {
+                if (!state.connected) return;
+                if (!(state.monitorMask & (1 << channelIdx))) return;
+                const showConfigBitmask = state.showConfigBitmasks[state.moduleIndex] >>> 0;
+                const showOsdBaseBitmask = state.showOsdBaseBitmasks[state.moduleIndex] >>> 0;
+                const showOsdExtBitmask = state.showOsdExtBitmasks[state.moduleIndex] >>> 0;
+                const showVumeter = !!state.showVumeterFlags[state.moduleIndex];
+                try {
+                    await api("POST", `/${state.moduleIndex}/${channelIdx}/select_video`, {
+                        channelMask: state.monitorMask >>> 0,
+                        showConfigBitmask,
+                        showVumeter,
+                        showOsdBaseBitmask,
+                        showOsdExtBitmask,
+                    });
+                    if (!silent) toast("ok", "Selection applied", `Module ${state.moduleIndex} · focus CH${channelIdx}`);
+                } catch (e) {
+                    toast("error", "Selection failed", e.message);
+                }
+            }
+
+            function firstMonitored() {
+                for (let i = 0; i < 32; i++) if (state.monitorMask & (1 << i)) return i;
+                return -1;
+            }
+
+            // ---------------------------------------------------------------------
+            // AI section
+            // ---------------------------------------------------------------------
+            function applyAiAvailability() {
+                if (state.axeleraAvailable) {
+                    el.aiCard.classList.remove("d-none");
+                } else {
+                    el.aiCard.classList.add("d-none");
+                    state.aiEnabled = false;
+                    state.aiMask = 0;
+                }
+            }
+
+            function renderAiChips() {
+                if (!state.axeleraAvailable) return;
+                const mod = currentModule();
+                const channels = mod.channels || [];
+                el.aiChannelChips.innerHTML = "";
+                const monitoredChannels = channels.filter((ch, i) => state.monitorMask & (1 << ((typeof ch.index === "number") ? ch.index : i)));
+                if (monitoredChannels.length === 0) {
+                    el.aiChannelChips.innerHTML = `<span class="small text-secondary">Monitor channels first to assign AI.</span>`;
+                }
+                monitoredChannels.forEach((ch, i) => {
+                    const idx = (typeof ch.index === "number") ? ch.index : i;
+                    const on = !!(state.aiMask & (1 << idx));
+                    const chip = document.createElement("button");
+                    chip.type = "button";
+                    chip.className = "btn btn-sm " + (on ? "btn-accent" : "btn-outline-secondary");
+                    chip.innerHTML = `<i class="bi bi-cpu me-1"></i>CH${idx}`;
+                    chip.addEventListener("click", () => {
+                        if (state.aiMask & (1 << idx)) state.aiMask &= ~(1 << idx);
+                        else state.aiMask |= (1 << idx);
+                        renderModule();
+                        saveSettings();
+                    });
+                    el.aiChannelChips.appendChild(chip);
+                });
+                el.chkAiEnable.checked = state.aiEnabled;
+                el.aiBody.style.opacity = state.aiEnabled ? "1" : ".55";
+                el.aiBody.style.pointerEvents = state.aiEnabled ? "auto" : "none";
+                const modelRadio = document.querySelector(`input[name="aiModel"][value="${state.model}"]`);
+                if (modelRadio) modelRadio.checked = true;
+            }
+
+            async function applyAi() {
+                if (!state.connected) return;
+                const mask = state.aiEnabled ? state.aiMask : 0;
+                try {
+                    // set the model route + the axelera channel list (both per spec)
+                    await api("POST", `/ai/${state.model}`, { channelMask: mask });
+                    await api("POST", "/axelera", { channelMask: mask });
+                    toast("ok", "AI updated", state.aiEnabled ? `${state.model.toUpperCase()} on mask 0x${mask.toString(16)}` : "AI disabled");
+                } catch (e) {
+                    toast("error", "AI update failed", e.message);
+                }
+                updateSummary();
+            }
+
+            // ---------------------------------------------------------------------
+            // Selection + snapshot
+            // ---------------------------------------------------------------------
+            async function applySelection(silent) {
+                if (!state.connected) return;
+                if (state.focusChannel === -1) {
+                    if (!silent) toast("warn", "Nothing to apply", "Select at least one channel to monitor.");
+                    return;
+                }
+                await applySelectionForChannel(state.focusChannel, silent);
+                updateSummary();
+            }
+
+            async function snapshot() {
+                if (!state.connected) return;
+                const path = el.snapPath.value.trim();
+                try {
+                    const resp = await api("POST", "/snapshot", path ? { pathname: path } : undefined);
+                    const saved = resp.path || path || "";
+                    toast("ok", "Snapshot captured", saved);
+                    log("INFO", `Snapshot saved: ${saved || "(auto)"}`);
+                    if (saved) {
+                        state.lastSnapshotPath = saved;
+                        el.btnDownloadSnap.disabled = false;
+                        el.snapDownloadHint.textContent = `Ready to download: ${saved}`;
+                    }
+                } catch (e) {
+                    toast("error", "Snapshot failed", e.message);
+                }
+            }
+
+            // ---------------------------------------------------------------------
+            // Physical monitor (graphics <-> console/shell)
+            // ---------------------------------------------------------------------
+            function renderDisplayMode(released) {
+                // Selected button = filled gradient, the other = outline only.
+                const graphicsFill = "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)";
+                const shellFill = "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)";
+                const applyBtn = (btn, active, fill, color) => {
+                    if (!btn) return;
+                    if (active) {
+                        btn.style.background = fill;
+                        btn.style.border = "none";
+                        btn.style.color = "#fff";
+                        btn.style.boxShadow = "0 4px 6px rgba(0, 0, 0, 0.25)";
+                    } else {
+                        btn.style.background = "transparent";
+                        btn.style.border = "2px solid " + color;
+                        btn.style.color = color;
+                        btn.style.boxShadow = "none";
+                    }
+                };
+                const graphicsActive = released === false;
+                const shellActive = released === true;
+                applyBtn(el.btnDisplayAcquire, graphicsActive, graphicsFill, "#15803d");
+                applyBtn(el.btnDisplayRelease, shellActive, shellFill, "#f59e0b");
+
+                if (!el.displayModeBadge) return;
+                el.displayModeBadge.classList.add("text-white");
+                if (released === true) {
+                    el.displayModeBadge.style.background = "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)";
+                    el.displayModeBadge.textContent = "Console / Shell";
+                } else if (released === false) {
+                    el.displayModeBadge.style.background = "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)";
+                    el.displayModeBadge.textContent = "Graphics";
+                } else {
+                    el.displayModeBadge.style.background = "#6c757d";
+                    el.displayModeBadge.textContent = "Unknown";
+                }
+            }
+
+            async function refreshDisplayStatus() {
+                if (!state.connected) return;
+                try {
+                    const resp = await api("GET", "/display");
+                    renderDisplayMode(!!resp.released);
+                } catch (e) {
+                    renderDisplayMode(undefined);
+                }
+            }
+
+            async function displayAcquire() {
+                if (!state.connected) return;
+                try {
+                    await api("POST", "/display/acquire");
+                    renderDisplayMode(false);
+                    toast("ok", "Graphics enabled", "Monitor now shows the multiviewer.");
+                } catch (e) {
+                    toast("error", "Acquire failed", e.message);
+                }
+            }
+
+            async function displayRelease() {
+                if (!state.connected) return;
+                try {
+                    await api("POST", "/display/release");
+                    renderDisplayMode(true);
+                    toast("ok", "Shell released", "Monitor now shows the Linux console/shell.");
+                } catch (e) {
+                    toast("error", "Release failed", e.message);
+                }
+            }
+
+            // Centralized client-side teardown: close the streaming popup and stop monitoring it.
+            function closeStreamingWindow() {
+                try {
+                    if (streamingWindow && !streamingWindow.closed) {
+                        streamingWindow.close();
+                    }
+                } catch (e) {
+                    log("WARN", `Cannot close streaming window: ${e.message}`);
+                }
+                streamingWindow = null;
+                setStreamingButtonState(false);
+                stopStreamingWindowMonitor();
+            }
+
+            async function resetApplication() {
+                if (!state.connected) return;
+                if (!confirm("Reset the application to its initial state?\nThe service will restart and every connection will be closed.")) return;
+                // Close the streaming page and disconnect it before asking the backend to re-exec.
+                closeStreamingWindow();
+                try {
+                    await api("POST", "/reset");
+                    renderDisplayMode(true);
+                    toast("ok", "Reset requested", "The application is restarting; reloading this page...");
+                    // The service re-execs, so this page must reload once the backend is reachable again (like pressing F5).
+                    waitForBackendThenReload();
+                } catch (e) {
+                    toast("error", "Reset failed", e.message);
+                }
+            }
+
+            // Poll the backend after a reset until it answers again, then reload the page (F5-like).
+            function waitForBackendThenReload() {
+                const healthUrl = state.baseUrl + "/display";
+                const deadline = Date.now() + 60000; // give the service up to 60s to come back
+                const poll = async () => {
+                    try {
+                        const res = await fetch(healthUrl, { method: "GET", cache: "no-store" });
+                        if (res.ok) {
+                            location.reload();
+                            return;
+                        }
+                    } catch (e) { /* backend still down, keep waiting */ }
+                    if (Date.now() < deadline) {
+                        setTimeout(poll, 1000);
+                    } else {
+                        location.reload();
+                    }
+                };
+                setTimeout(poll, 3000); // wait a bit first so the old process has exec'd
+            }
+
+            async function downloadSnapshot() {
+                if (!state.connected) return;
+                const remotePath = state.lastSnapshotPath;
+                if (!remotePath) {
+                    toast("warn", "Nothing to download", "Capture a snapshot first.");
+                    return;
+                }
+                const fileName = remotePath.split("/").pop() || "snapshot.bmp";
+                const url = new URL(state.baseUrl + "/snapshot/file");
+                url.searchParams.set("pathname", remotePath);
+                const full = url.toString();
+                log("API", `GET ${full}`);
+                el.btnDownloadSnap.disabled = true;
+                try {
+                    const res = await fetch(full, { method: "GET" });
+                    if (!res.ok) {
+                        let msg = `HTTP ${res.status}`;
+                        try { const j = await res.json(); if (j && j.msg) msg = j.msg; } catch { /* not json */ }
+                        throw new Error(msg);
+                    }
+                    const blob = await res.blob();
+
+                    // Preferred: File System Access API (Chromium) lets the user pick the location.
+                    if (window.showSaveFilePicker) {
+                        try {
+                            const handle = await window.showSaveFilePicker({
+                                suggestedName: fileName,
+                                types: [{ description: "Image", accept: { [blob.type || "application/octet-stream"]: ["." + (fileName.split(".").pop() || "bmp")] } }],
+                            });
+                            const writable = await handle.createWritable();
+                            await writable.write(blob);
+                            await writable.close();
+                            toast("ok", "Snapshot downloaded", handle.name || fileName);
+                            log("OK", `Snapshot downloaded to chosen location: ${handle.name || fileName}`);
+                            return;
+                        } catch (pickErr) {
+                            if (pickErr && pickErr.name === "AbortError") {
+                                log("INFO", "Download cancelled by user.");
+                                return;
+                            }
+                            // Fall through to classic download on any other error.
+                            log("WARN", `Save picker unavailable (${pickErr.message}); falling back to browser download.`);
+                        }
+                    }
+
+                    // Fallback: trigger a normal browser download (goes to the Downloads folder).
+                    const objUrl = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = objUrl;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    setTimeout(() => URL.revokeObjectURL(objUrl), 1000);
+                    toast("ok", "Snapshot downloaded", fileName);
+                    log("OK", `Snapshot downloaded to browser Downloads folder: ${fileName}`);
+                } catch (e) {
+                    toast("error", "Download failed", e.message);
+                    log("ERROR", `Snapshot download failed: ${e.message}`);
+                } finally {
+                    el.btnDownloadSnap.disabled = false;
+                }
+            }
+
+            // ---------------------------------------------------------------------
+            // Diagnostics  (results dumped into the Activity Log)
+            // ---------------------------------------------------------------------
+            async function getMvInfo() {
+                if (!state.connected) return;
+                const reset = el.chkMvReset.checked;
+                try {
+                    const resp = await api("GET", `/${state.moduleIndex}/mv/info`, reset ? { reset: "true" } : undefined);
+                    const info = resp.mvInfo || {};
+                    log("INFO", `── MV Info · module ${info.module ?? state.moduleIndex} (selected=${info.selectedModule ?? "?"}, reset=${reset}) ──`);
+                    (info.channels || []).forEach((c) => {
+                        log("INFO", `   CH${c.index}${c.focus ? " *" : "  "}  buf=${c.bufferId}/${c.lastBufferId} ` +
+                            `bufDisc=${c.nbBufferIdDiscontinuity}  ts=${c.ts}  lastTs=${c.lastTs} ` +
+                            `dur=${c.lastFrameDuration}  tsDisc=${c.nbTsDiscontinuity}`);
+                    });
+                    if (!(info.channels || []).length) log("WARN", "   (no channel state returned)");
+                    toast("ok", "MV Info retrieved", reset ? "counters reset" : "");
+                } catch (e) {
+                    toast("error", "MV Info failed", e.message);
+                }
+            }
+
+            async function getMvLatency() {
+                if (!state.connected) return;
+                try {
+                    const resp = await api("GET", `/${state.moduleIndex}/mv/latency`);
+                    const lat = resp.latency || {};
+                    log("INFO", `── MV Latency · module ${lat.module ?? state.moduleIndex} ──`);
+                    (lat.lines || []).forEach((line) => log("INFO", "   " + line));
+                    if (!(lat.lines || []).length) log("WARN", "   (no latency data returned)");
+                    toast("ok", "MV Latency retrieved", "");
+                } catch (e) {
+                    toast("error", "MV Latency failed", e.message);
+                }
+            }
+
+
+            function hex32(v) { return "0x" + ((v >>> 0).toString(16).toUpperCase().padStart(8, "0")); }
+            function updateSummary() {
+                el.sumModule.textContent = String(state.moduleIndex);
+                el.sumFocus.textContent = state.focusChannel >= 0 ? "CH" + state.focusChannel : "—";
+                el.sumMask.textContent = hex32(state.monitorMask);
+                el.sumAiMask.textContent = hex32(state.aiEnabled ? state.aiMask : 0);
+                el.sumModel.textContent = state.axeleraAvailable && state.aiEnabled ? state.model.toUpperCase() : "—";
+            }
+
+            // ---------------------------------------------------------------------
+            // Settings persistence (localStorage + file export/import)
+            // ---------------------------------------------------------------------
+            function collectSettings() {
+                return {
+                    theme: state.theme, accent: state.accent,
+                    moduleIndex: state.moduleIndex,
+                    monitorMask: state.monitorMask, focusChannel: state.focusChannel,
+                    aiMask: state.aiMask, model: state.model, aiEnabled: state.aiEnabled,
+                    autoApply: state.autoApply, autoSave: state.autoSave, useLocalHost: state.useLocalHost,
+                    snapPath: el.snapPath.value.trim(),
+                    mvReset: el.chkMvReset.checked,
+                    showConfigBitmasks: state.showConfigBitmasks,
+                    showOsdBaseBitmasks: state.showOsdBaseBitmasks,
+                    showOsdExtBitmasks: state.showOsdExtBitmasks,
+                    showVumeterFlags: state.showVumeterFlags,
+                };
+            }
+            function saveSettings() {
+                if (initializing || !state.autoSave) return;
+                try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(collectSettings())); } catch { }
+            }
+            function applySettings(s) {
+                if (!s) return;
+                if (s.theme) setTheme(s.theme);
+                if (s.accent) setAccent(s.accent);
+                state.moduleIndex = s.moduleIndex ?? 0;
+                state.monitorMask = s.monitorMask ?? 0;
+                state.focusChannel = (s.focusChannel ?? -1);
+                state.aiMask = s.aiMask ?? 0;
+                state.model = s.model || "yolo";
+                state.aiEnabled = !!s.aiEnabled;
+                state.autoApply = s.autoApply !== false;
+                state.autoSave = s.autoSave !== false;
+                state.useLocalHost = s.useLocalHost !== false;
+                el.chkAutoApply.checked = state.autoApply;
+                el.chkAutoSave.checked = state.autoSave;
+                el.chkAiEnable.checked = state.aiEnabled;
+                if (s.snapPath) el.snapPath.value = s.snapPath;
+                state.mvReset = !!s.mvReset;
+                el.chkMvReset.checked = state.mvReset;
+                // Restore per-module overlay bitmasks
+                if (s.showConfigBitmasks && Array.isArray(s.showConfigBitmasks)) {
+                    state.showConfigBitmasks = s.showConfigBitmasks;
+                }
+                if (s.showOsdBaseBitmasks && Array.isArray(s.showOsdBaseBitmasks)) {
+                    state.showOsdBaseBitmasks = s.showOsdBaseBitmasks;
+                }
+                if (s.showOsdExtBitmasks && Array.isArray(s.showOsdExtBitmasks)) {
+                    state.showOsdExtBitmasks = s.showOsdExtBitmasks;
+                }
+                if (s.showVumeterFlags && Array.isArray(s.showVumeterFlags)) {
+                    state.showVumeterFlags = s.showVumeterFlags;
+                }
+                renderHostModeUi();
+            }
+            function loadSettings() {
+                try { applySettings(JSON.parse(localStorage.getItem(SETTINGS_KEY))); } catch { }
+            }
+            function exportSettings() {
+                const blob = new Blob([JSON.stringify(collectSettings(), null, 2)], { type: "application/json" });
+                const a = document.createElement("a");
+                a.href = URL.createObjectURL(blob);
+                a.download = "vista_settings.json";
+                a.click();
+                URL.revokeObjectURL(a.href);
+                toast("ok", "Settings exported", "vista_settings.json");
+            }
+            function importSettings(file) {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    try {
+                        const s = JSON.parse(reader.result);
+                        applySettings(s);
+                        if (state.connected) { renderModule(); applyAiAvailability(); }
+                        saveSettings();
+                        toast("ok", "Settings imported", file.name);
+                        log("INFO", `Imported settings from ${file.name}`);
+                    } catch (e) {
+                        toast("error", "Import failed", e.message);
+                    }
+                };
+                reader.readAsText(file);
+            }
+            function resetAll() {
+                if (!confirm("Clear last-used settings and ALL saved profiles? This cannot be undone.")) return;
+                localStorage.removeItem(SETTINGS_KEY);
+                localStorage.removeItem(PROFILES_KEY);
+                localStorage.removeItem(LASTPROFILE_KEY);
+                toast("info", "Settings cleared", "Reloading…");
+                setTimeout(() => location.reload(), 600);
+            }
+
+            // ---------------------------------------------------------------------
+            // Named profiles (multiple settings sets in localStorage)
+            // ---------------------------------------------------------------------
+            function readProfiles() {
+                try { return JSON.parse(localStorage.getItem(PROFILES_KEY)) || {}; } catch { return {}; }
+            }
+            function writeProfiles(map) {
+                try { localStorage.setItem(PROFILES_KEY, JSON.stringify(map)); } catch { }
+            }
+            function refreshProfileSelect(selected) {
+                const map = readProfiles();
+                const names = Object.keys(map).sort();
+                el.profileSelect.innerHTML = "";
+                if (names.length === 0) {
+                    const opt = document.createElement("option");
+                    opt.value = ""; opt.textContent = "(no profiles)"; opt.disabled = true;
+                    el.profileSelect.appendChild(opt);
+                } else {
+                    names.forEach((n) => {
+                        const opt = document.createElement("option");
+                        opt.value = n; opt.textContent = n;
+                        el.profileSelect.appendChild(opt);
+                    });
+                }
+                const last = selected || localStorage.getItem(LASTPROFILE_KEY);
+                if (last && names.includes(last)) el.profileSelect.value = last;
+            }
+            function saveProfile(name) {
+                if (!name) return;
+                const map = readProfiles();
+                map[name] = collectSettings();
+                writeProfiles(map);
+                localStorage.setItem(LASTPROFILE_KEY, name);
+                refreshProfileSelect(name);
+                toast("ok", "Profile saved", name);
+                log("INFO", `Saved profile '${name}'.`);
+            }
+            function loadProfile(name) {
+                if (!name) { toast("warn", "No profile selected", ""); return; }
+                const map = readProfiles();
+                if (!map[name]) { toast("error", "Profile not found", name); return; }
+                applySettings(map[name]);
+                if (state.connected) { renderModule(); applyAiAvailability(); }
+                localStorage.setItem(LASTPROFILE_KEY, name);
+                saveSettings();
+                toast("ok", "Profile loaded", name);
+                log("INFO", `Loaded profile '${name}'.`);
+            }
+            function deleteProfile(name) {
+                if (!name) { toast("warn", "No profile selected", ""); return; }
+                if (!confirm(`Delete profile '${name}'?`)) return;
+                const map = readProfiles();
+                delete map[name];
+                writeProfiles(map);
+                if (localStorage.getItem(LASTPROFILE_KEY) === name) localStorage.removeItem(LASTPROFILE_KEY);
+                refreshProfileSelect();
+                toast("info", "Profile deleted", name);
+                log("INFO", `Deleted profile '${name}'.`);
+            }
+
+            // ---------------------------------------------------------------------
+            // Theme / accent
+            // ---------------------------------------------------------------------
+            function setTheme(t) {
+                state.theme = t;
+                el.html.setAttribute("data-bs-theme", t);
+                saveSettings();
+            }
+            function setAccent(a) {
+                const c = ACCENTS[a] || ACCENTS.indigo;
+                state.accent = a;
+                document.documentElement.style.setProperty("--vista-accent", c[0]);
+                document.documentElement.style.setProperty("--vista-accent-2", c[1]);
+                saveSettings();
+            }
+
+            // ---------------------------------------------------------------------
+            // Events
+            // ---------------------------------------------------------------------
+            el.moduleSelect.addEventListener("change", () => {
+                state.moduleIndex = parseInt(el.moduleSelect.value, 10) || 0;
+                renderModule();
+                saveSettings();
+                if (state.autoApply && state.connected) applySelection(true);
+            });
+
+            el.chkAutoApply.addEventListener("change", () => { state.autoApply = el.chkAutoApply.checked; saveSettings(); });
+
+            el.btnSelectAll.addEventListener("click", () => {
+                const ch = currentModule().channels || [];
+                ch.forEach((c, i) => state.monitorMask |= (1 << ((typeof c.index === "number") ? c.index : i)));
+                // If focus was cleared, restore it to the first monitored channel
+                if (state.focusChannel === -1) state.focusChannel = firstMonitored();
+                renderModule(); saveSettings();
+                if (state.autoApply && state.connected) applySelection(true);
+            });
+            el.btnSelectNone.addEventListener("click", async () => {
+                state.monitorMask = 0; state.aiMask = 0; state.focusChannel = -1;
+                renderModule(); saveSettings();
+                // Tell the backend to stop monitoring and streaming (channelMask=0 disables OnRender)
+                if (state.connected) {
+                    try {
+                        await api("POST", `/${state.moduleIndex}/0/select`, { channelMask: 0 });
+                    } catch (e) {
+                        toast("error", "Clear failed", e.message);
+                    }
+                }
+            });
+            el.btnHostMode.addEventListener("click", () => {
+                state.useLocalHost = !state.useLocalHost;
+                renderHostModeUi();
+                saveSettings();
+                log("INFO", `Use localhost tunnel: ${state.useLocalHost ? "enabled" : "disabled"}`);
+            });
+            el.btnStreaming.addEventListener("click", openStreamingWindow);
+
+            el.chkAiEnable.addEventListener("change", () => {
+                state.aiEnabled = el.chkAiEnable.checked;
+                renderAiChips(); updateSummary(); saveSettings();
+            });
+            document.querySelectorAll('input[name="aiModel"]').forEach((r) =>
+                r.addEventListener("change", () => { state.model = r.value; updateSummary(); saveSettings(); }));
+            el.btnApplyAi.addEventListener("click", applyAi);
+
+            el.btnApplySelection.addEventListener("click", () => applySelection(false));
+            el.btnSnapshot.addEventListener("click", snapshot);
+            el.btnDownloadSnap.addEventListener("click", downloadSnapshot);
+            el.snapPath.addEventListener("change", saveSettings);
+            el.btnDisplayAcquire.addEventListener("click", displayAcquire);
+            el.btnDisplayRelease.addEventListener("click", displayRelease);
+            el.btnResetApp.addEventListener("click", resetApplication);
+            el.btnMvInfo.addEventListener("click", getMvInfo);
+            el.btnMvLatency.addEventListener("click", getMvLatency);
+            el.chkMvReset.addEventListener("change", () => { state.mvReset = el.chkMvReset.checked; saveSettings(); });
+
+            el.btnClearLog.addEventListener("click", () => { el.logConsole.innerHTML = ""; });
+            el.chkAutoSave.addEventListener("change", () => {
+                state.autoSave = el.chkAutoSave.checked;
+                if (state.autoSave) saveSettings();
+            });
+            el.chkUseLocalHost.addEventListener("change", () => {
+                state.useLocalHost = el.chkUseLocalHost.checked;
+                renderHostModeUi();
+                saveSettings();
+                log("INFO", `Use localhost tunnel: ${state.useLocalHost ? "enabled" : "disabled"}`);
+            });
+            el.btnExport.addEventListener("click", exportSettings);
+            el.btnImport.addEventListener("click", () => el.importFile.click());
+            el.importFile.addEventListener("change", (e) => { if (e.target.files[0]) importSettings(e.target.files[0]); e.target.value = ""; });
+            el.btnReset.addEventListener("click", resetAll);
+            el.btnProfileLoad.addEventListener("click", () => loadProfile(el.profileSelect.value));
+            el.btnProfileSave.addEventListener("click", () => {
+                const name = el.profileSelect.value || prompt("Profile name:", "default");
+                if (name) saveProfile(name.trim());
+            });
+            el.btnProfileSaveAs.addEventListener("click", () => {
+                const name = prompt("New profile name:", "");
+                if (name) saveProfile(name.trim());
+            });
+            el.btnProfileDelete.addEventListener("click", () => deleteProfile(el.profileSelect.value));
+
+            document.querySelectorAll("[data-theme]").forEach((b) => b.addEventListener("click", () => setTheme(b.dataset.theme)));
+            document.querySelectorAll("[data-accent]").forEach((b) => b.addEventListener("click", () => setAccent(b.dataset.accent)));
+
+            // Documentation: open the locally served user guide (portable HTML, works offline).
+            function openDocs() { window.open("docs/vista-web-ui.html", "vista_docs_window"); }
+            if (el.btnHelp) el.btnHelp.addEventListener("click", openDocs);
+            document.addEventListener("keydown", (e) => {
+                const tag = (e.target && e.target.tagName) || "";
+                const typing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+                if (e.key === "F1" || (!typing && e.key === "?")) {
+                    e.preventDefault();
+                    openDocs();
+                }
+            });
+
+            // ---------------------------------------------------------------------
+            // Init
+            // ---------------------------------------------------------------------
+            setAccent("indigo");
+            setTheme("dark");
+            if (window.name !== "vista_control_window") {
+                window.name = "vista_control_window";
+            }
+            const endpoint = deriveEndpointFromBrowserLocation();
+            loadSettings();
+            refreshProfileSelect();
+            setStatus("offline");
+            renderHostModeUi();
+            initializing = false;   // enable persistence only after initial restore
+            saveSettings();         // persist the restored state once
+            log("INFO", `VISTA Control ready. Browser endpoint: ${endpoint.baseUrl || "(unavailable)"}`);
+            log("INFO", "Connecting using browser endpoint…");
+            setStreamingButtonState(false);
+        })();
+    </script>
+</body>
+
+</html>

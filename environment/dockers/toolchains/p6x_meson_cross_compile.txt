@@ -1,0 +1,21 @@
+[binaries]
+c = '/opt/sdk/p6x/bin/x86_64-linux-gnu-gcc'
+cpp = '/opt/sdk/p6x/bin/x86_64-linux-gnu-g++'
+pkgconfig = '/opt/sdk/p6x/bin/pkg-config'
+
+[host_machine]
+system = 'linux'
+cpu_family = 'x86_64'
+cpu = 'x86_64'
+endian = 'little'
+
+[properties]
+# Override PKG_CONFIG_SYSROOT_DIR that p6x_toolchain.cmake injects into the environment.
+# Without this, vcpkg package paths get sysroot-prepended and break.
+# With sys_root='/', pkg-config prepends '/' to absolute paths → no-op on Linux.
+sys_root = '/'
+pkg_config_libdir = [ '/opt/sdk/p6x/x86_64-buildroot-linux-gnu/sysroot/usr/lib/pkgconfig', '/opt/sdk/p6x/x86_64-buildroot-linux-gnu/sysroot/usr/share/pkgconfig' ]
+needs_exe_wrapper = true
+
+c_args = ['-g', '-fPIC', '-mtune=alderlake']
+cpp_args = ['-g', '-fPIC', '-mtune=alderlake']
