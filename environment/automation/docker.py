@@ -20,11 +20,12 @@ class Docker(object) :
     # Returns
     #    Nothing
     #
-    def __init__(self, _image_name, _image_version, _remote_path, _verbose = False) :
+    def __init__(self, _image_name, _image_version, _remote_path, dockerfile = None, _verbose = False) :
         self.image_name     = _image_name
         self.image_version  = _image_version
         self.remote_path    = _remote_path
         self.verbose        = _verbose
+        self.dockerfile     = dockerfile
         self.parallel_build = os.cpu_count() - 1
         self.environ        = Environment()
 
@@ -123,6 +124,34 @@ class Docker(object) :
     #
     def get_remote_path(self) :
         return self.remote_path
+
+    #
+    # Description
+    #   This function returns the path to the Dockerfile
+    #
+    # Parameters
+    #   None
+    #
+    # Returns
+    #   The path to the Dockerfile
+    #
+    def get_dockerfile(self) :
+        return self.dockerfile
+
+    #
+    # Description
+    #   This function checks if the Dockerfile exists
+    #
+    # Parameters
+    #   None
+    #
+    # Returns
+    #   True if the Dockerfile exists, False otherwise
+    #
+    def dockerfile_exists(self) :
+        if not self.dockerfile :
+            return False
+        return os.path.isfile(self.dockerfile)
 
     #
     # Description
@@ -232,7 +261,24 @@ class Docker(object) :
     #
     def build(self, _dockerfile, _target = None, _additional_params = None) :
 
-        cmd = ["docker", "build", "--force-rm", "-f", _dockerfile, "--network=host", "--build-arg", "PARALLEL_BUILD={}".format(self.parallel_build) ]
+        # Add user id and group id
+        user = self.environ.GetUser()
+        from pwd import getpwnam
+        user_access = getpwnam(user)
+        uid         = user_access.pw_uid
+        gid         = user_access.pw_gid
+
+        cmd = [
+            "docker",
+            "build",
+            "--force-rm",
+            "-f", _dockerfile,
+            "--network=host",
+            "--build-arg", "USERNAME={}".format(user),
+            "--build-arg", "USER_UID={}".format(uid),
+            "--build-arg", "USER_GID={}".format(gid),
+            "--build-arg", "PARALLEL_BUILD={}".format(self.parallel_build)
+        ]
 
         if self.environ.is_linux() :
             cmd.extend(["--ulimit", "nofile={0}:{0}".format("1024000")])
@@ -248,7 +294,7 @@ class Docker(object) :
             for arg in _additional_params :
                 cmd.extend(["--build-arg", arg])
 
-        cmd.extend([ "-t", self.get_image(), "." ])
+        cmd.extend([ "-t", self.get_image(), os.path.dirname(_dockerfile) ])
 
         self.process(cmd)
 
@@ -282,6 +328,22 @@ class Docker(object) :
     def push(self, _image) :
 
         cmd = [ "docker", "push", _image ]
+
+        self.process(cmd)
+
+    #
+    # Description
+    #   This function pulls the image from the remote registry
+    #
+    # Parameters
+    #   _image - The image to pull
+    #
+    # Returns
+    #   Throws RuntimeError in case of failure
+    #
+    def pull(self, _image) :
+
+        cmd = [ "docker", "pull", _image ]
 
         self.process(cmd)
 
@@ -322,15 +384,20 @@ class Docker(object) :
     #   image to the remote registry
     #
     # Parameters
-    #   None
+    #   user     - The user name for the remote registry
+    #   password - The user password for the remote registry
     #
     # Returns
     #   Throws RuntimeError in case of failure
     #
-    def publish(self) :
-
-        self.tag (self.get_image(), self.get_remote_image())
-        self.push(self.get_remote_image())
+    def publish(self, user = None, password = None) :
+        if user and password :
+            try:
+                self.login(user, password)
+                self.tag  (self.get_image(), self.get_remote_image())
+                self.push (self.get_remote_image())
+            finally :
+                self.logout()
 
     #
     # Description
@@ -379,7 +446,7 @@ class Docker(object) :
     #
     def exist_locally(self) :
 
-        cmd = [ "docker", "image", "inspect", self.get_remote_image() ]
+        cmd = [ "docker", "image", "inspect", self.get_image() ]
 
         return process_cmd_silent(cmd) == 0
 

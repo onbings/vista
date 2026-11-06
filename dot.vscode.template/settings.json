@@ -4,10 +4,27 @@
     "targetPythonVenv": "/data/bha/venv:/data/bha/venv/lib/python3.12/site-packages",
     "pyGdbPort": 5679,
     "cppGdbPort": 2347,
-    "docker.host": "tcp://localhost:23750",
-    "docker.environment": {
-        "DOCKER_HOST": "tcp://localhost:23750"
-    },
+    "remoteDeployDir": "/tmp/${env:USER}_vista",
+    "remoteSyncDirs": [
+        "bin",
+        "lib"
+    ],
+    "remoteExtraSync": [
+        "code/sources/onbing-vista-lib/assets:bin/assets"
+    ],
+    "remoteMkdirs": [
+        "lib",
+        "bin",
+        "bin/assets",
+        "data",
+        "python_package_1"
+    ],
+    "remoteStopProcesses": [
+        "onbing-vista-tests",
+        "onbing-vista-service"
+    ],
+    "remoteBuildDirDebug": "all-p6x-debug",
+    "remoteBuildDirRelease": "all-p6x-release",
     "files.associations": {
         "*.i": "noformat",
         "random": "cpp",

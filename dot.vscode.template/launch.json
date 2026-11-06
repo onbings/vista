@@ -5,7 +5,7 @@
             "name": "Open Core Dump C++ (vista-service)",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/out/build/${command:cmake.activeConfigurePresetName}/binaries/bin/onbings-vista-service",
+            "program": "${workspaceFolder}/out/build/${command:cmake.activeConfigurePresetName}/binaries/bin/onbing-vista-service",
             "coreDumpPath": "${workspaceFolder}/vista.core",
             "cwd": "${workspaceFolder}/out/build/${command:cmake.activeConfigurePresetName}/binaries",
             "externalConsole": false,
@@ -29,7 +29,7 @@
             "type": "cppdbg",
             "request": "launch",
             "preLaunchTask": "Tsk:BldLocalDebug",
-            "program": "${workspaceFolder}/out/build/${command:cmake.activeConfigurePresetName}/binaries/bin/onbings-vista-tests",
+            "program": "${workspaceFolder}/out/build/${command:cmake.activeConfigurePresetName}/binaries/bin/onbing-vista-tests",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/out/build/${command:cmake.activeConfigurePresetName}/binaries",
@@ -50,7 +50,7 @@
             ],
             "windows": {
                 "type": "cppvsdbg",
-                "program": "${workspaceFolder}/out/build/${command:cmake.activeConfigurePresetName}/binaries/bin/${command:cmake.buildType}/onbings-vista-tests.exe",
+                "program": "${workspaceFolder}/out/build/${command:cmake.activeConfigurePresetName}/binaries/bin/${command:cmake.buildType}/onbing-vista-tests.exe",
                 "cwd": "${workspaceFolder}/out/build/${command:cmake.activeConfigurePresetName}/binaries/bin/${command:cmake.buildType}",
                 "console": "integratedTerminal"
             }
@@ -60,7 +60,7 @@
             "type": "cppdbg",
             "request": "launch",
             "preLaunchTask": "Tsk:BldLocalDebug",
-            "program": "${workspaceFolder}/out/build/${command:cmake.activeConfigurePresetName}/binaries/bin/onbings-vista-service",
+            "program": "${workspaceFolder}/out/build/${command:cmake.activeConfigurePresetName}/binaries/bin/onbing-vista-service",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/out/build/${command:cmake.activeConfigurePresetName}/binaries",
@@ -81,17 +81,17 @@
             ],
             "windows": {
                 "type": "cppvsdbg",
-                "program": "${workspaceFolder}/out/build/${command:cmake.activeConfigurePresetName}/binaries/bin/${command:cmake.buildType}/onbings-vista-service.exe",
+                "program": "${workspaceFolder}/out/build/${command:cmake.activeConfigurePresetName}/binaries/bin/${command:cmake.buildType}/onbing-vista-service.exe",
                 "cwd": "${workspaceFolder}/out/build/${command:cmake.activeConfigurePresetName}/binaries/bin/${command:cmake.buildType}",
                 "console": "integratedTerminal"
             }
         },
         {
             "name": "Rem Test C++",
-            "preLaunchTask": "Tsk:VistaTestCpp",
+            "preLaunchTask": "Tsk:vistaTestCpp",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/out/build/all-p6x-debug/binaries/bin/onbings-vista-tests",
+            "program": "${workspaceFolder}/out/build/all-p6x-debug/binaries/bin/onbing-vista-tests",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/out/build/all-p6x-debug/binaries",
@@ -99,6 +99,7 @@
             "externalConsole": false,
             "MIMode": "gdb",
             "miDebuggerServerAddress": "${config:targetHost}:${config:cppGdbPort}",
+            "miDebuggerArgs": "-iex \"set index-cache enabled on\" -iex \"set debuginfod enabled off\"",
             "miDebuggerPath": "/opt/sdk/p6x/opt/ext-toolchain/bin/x86_64-evs-linux-gnu-gdb",
             "setupCommands": [
                 {
@@ -110,16 +111,17 @@
         },
         {
             "name": "Rem Service C++",
-            "preLaunchTask": "Tsk:VistaServiceCpp",
+            "preLaunchTask": "Tsk:vistaServiceCpp",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/out/build/${command:cmake.activeConfigurePresetName}/binaries/bin/onbings-vista-service",
+            "program": "${workspaceFolder}/out/build/${command:cmake.activeConfigurePresetName}/binaries/bin/onbing-vista-service",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/out/build/${command:cmake.activeConfigurePresetName}/binaries",
             "externalConsole": false,
             "MIMode": "gdb",
             "miDebuggerServerAddress": "${config:targetHost}:${config:cppGdbPort}",
+            "miDebuggerArgs": "-iex \"set index-cache enabled on\" -iex \"set debuginfod enabled off\"",
             "miDebuggerPath": "/opt/sdk/p6x/opt/ext-toolchain/bin/x86_64-evs-linux-gnu-gdb",
             "setupCommands": [
                 {
@@ -131,10 +133,10 @@
         },
         {
             "name": "!!! Dbg:Special Rem Service C++ use native gdb as it has python support so can load .gdbinit. This work because we have the same cpu arch but not recommanded !!!",
-            "preLaunchTask": "Tsk:VistaServiceCpp",
+            "preLaunchTask": "Tsk:vistaServiceCpp",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/out/build/${command:cmake.activeConfigurePresetName}/binaries/bin/onbings-vista",
+            "program": "${workspaceFolder}/out/build/${command:cmake.activeConfigurePresetName}/binaries/bin/onbing-vista-service",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/out/build/all-p6x-debug/binaries",
@@ -142,6 +144,7 @@
             "externalConsole": false,
             "MIMode": "gdb",
             "miDebuggerServerAddress": "${config:targetHost}:${config:cppGdbPort}",
+            "miDebuggerArgs": "-iex \"set index-cache enabled on\" -iex \"set debuginfod enabled off\"",
             "miDebuggerPath": "/opt/rh/gcc-toolset-13/root/usr/bin/gdb",
             "setupCommands": [
                 {
@@ -159,7 +162,7 @@
             "name": "Debug vista Python Client",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/code/sources/onbings-vista-python-client/vista-client.py",
+            "program": "${workspaceFolder}/code/sources/onbing-vista-python-client/vista-client.py",
             "args": [
                 "--host",
                 "xts-005",

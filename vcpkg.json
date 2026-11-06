@@ -20,19 +20,6 @@
       "features": [
         "httplib"
       ]
-    },
-    {
-      "name": "opencv4",
-      "default-features": false,
-      "features": [
-        "fs",
-        "intrinsics",
-        "jpeg",
-        "png",
-        "thread",
-        "tiff",
-        "webp"
-      ]
     }
   ],
   "features": {

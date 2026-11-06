@@ -66,15 +66,15 @@ class Group(object) :
     #   This function adds an entry to the file
     #
     # Parameters
-    #   gid       - The group ID
-    #   username  - The user name
     #   groupname - The group name
     #   x         - The password encrypted token
+    #   gid       - The group ID
+    #   username  - The user name
     #
     # Returns
     #    Nothing
     #
-    def add_entry(self, gid, username, groupname="evs", x="x") :
+    def add_entry(self, groupname, x="x", gid="1000", username="") :
 
         item = self.__make_item(groupname, x, gid, username)
 

@@ -1,0 +1,8 @@
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE} AS image_devel
+
+# Add your custom things here namely to debug things or customize your environment
+# Pay attention that any modification made here will be yours only. No CI or others
+# developper will never see them. So if your build rely on some feature placed here
+# they are misplaced and should belong to the non .dev. Dockerfile.
+

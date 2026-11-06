@@ -1,0 +1,53 @@
+{
+  "name": "onbings-vista",
+  "initializeCommand": [
+    "${localWorkspaceFolder}/.devcontainer/initialize.py",
+    "-n",
+    "aquila",
+    "--network",
+    "--extensions",
+    "${localWorkspaceFolder}/dockers/Dockerfile.aquila,${localWorkspaceFolder}/dockers/Dockerfile.dev.aquila",
+    "--devcontainer",
+    "${localWorkspaceFolder}/out/devcontainer.yml",
+    "-c",
+    "true"
+  ],
+  "dockerComposeFile": [
+    "docker-compose.yml",
+    "docker-compose.dev.yml",
+    "${localWorkspaceFolder}/out/devcontainer.yml"
+  ],
+  "service": "dev",
+  "shutdownAction": "stopCompose",
+  "workspaceFolder": "${localWorkspaceFolder}",
+  "customizations": {
+    "vscode": {
+      // Place here only extensions that are required for everyone using this devcontainer.
+      // For personal preferences, add them in your own personal settings
+      // (CTRL+Shift+P -> Preferences: Open User Settings (JSON)) through
+      // 'dev.containers.defaultExtensions' setting.
+      "extensions": [
+        "github.copilot",
+        "github.copilot-chat",
+        "ms-python.debugpy",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-vscode.cmake-tools",
+        "ms-vscode.cpptools",
+        "ms-vscode.cpptools-extension-pack",
+        "ms-vscode.cpptools-themes"
+      ],
+      // Place here only settings that are required for everyone using this devcontainer.
+      // For personal preferences, add them in your own personal settings
+      // (CTRL+Shift+P -> Preferences: Open User Settings (JSON))
+      "settings": {}
+    },
+    // Features are mainly a way to modify/augment the devcontainer environment.
+    // There is already the dockers/Dockerfile.dev.X for that specific purpose
+    // that you can modify as needed. Just pay attention that this specific
+    // layer is for you only and won't be used by any CI. So if your build relies
+    // on specific features you added there they are probably misplaced and belong
+    // to dockers/Dockerfile.X
+    "features": {}
+  }
+}

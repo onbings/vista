@@ -1,0 +1,10 @@
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE} AS image_devel
+
+# Add hardware-setup specific tools below
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    nasm \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+

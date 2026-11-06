@@ -1,0 +1,7 @@
+services:
+  dev:
+    # Extra/overridden bind mounts (see docker-compose.yml for reference)
+    volumes: 
+      - /mnt/pro:/mnt/pro:cached
+    # Extra/overridden environment vars (see docker-compose.yml for reference)
+    environment: []

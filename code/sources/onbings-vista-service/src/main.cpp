@@ -1,19 +1,19 @@
 /*
- * Copyright (c) 2024-2044, OnBings. All rights reserved.
+ * Copyright (c) 2024-2044, EvS-hwfw. All rights reserved.
  *
  * THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY
  * KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND/OR FITNESS FOR A PARTICULAR
  * PURPOSE.
  *
- * This module implement the VISTA engine service: Vision Intelligence, Statistics, and Tracking Analysis
+ * This module implement the CANVAS engine service: Vision Intelligence, Statistics, and Tracking Analysis
  *
  * Author:      Bernard HARMEL: b.harmel@gmail.com
  *
  * History:
  * V 1.00  September 25 2026  BHA : Initial release
  */
-#include "vista_daemon.h"
+#include "canvas_daemon.h"
 #include <memory>
 #include <filesystem>
 #include <cstdarg>
@@ -24,14 +24,18 @@
 #include <fcntl.h>
 #include <bofstd/bofcommandlineparser.h>
 
-struct VISTA_SERVICE_PARAM
+#if !defined(_WIN32)
+#include <dirent.h>
+#endif
+
+struct CANVAS_SERVICE_PARAM
 {
   bool AskHelp_B;
   ILF::ILogger::LogSeverity LogLevel_E;
 
-  VISTA::VISTA_ENGINE_PARAM VistaEngineParam_X;
+  CANVAS::CANVAS_ENGINE_PARAM CanvasEngineParam_X;
 
-  VISTA_SERVICE_PARAM()
+  CANVAS_SERVICE_PARAM()
   {
     Reset();
   }
@@ -41,58 +45,58 @@ struct VISTA_SERVICE_PARAM
     AskHelp_B = false;
     LogLevel_E = ILF::ILogger::LogSeverity::LOG_SEVERITY_EMERG;
 
-    VistaEngineParam_X.Reset();
+    CanvasEngineParam_X.Reset();
   }
 };
-static VISTA_SERVICE_PARAM S_VistaServiceParam_X;
+static CANVAS_SERVICE_PARAM S_CanvasServiceParam_X;
 static std::vector<BOF::BOFPARAMETER> S_pCommandLineOption_X = {
     // General Options
-    {nullptr, std::string("h"), std::string("Ask help."), "", "", BOF::BOFPARAMETER_ARG_FLAG::NONE, BOF_PARAM_DEF_VARIABLE(S_VistaServiceParam_X.AskHelp_B, BOOL, true, 0)},
-    {nullptr, std::string("help"), std::string("Ask help."), "", "", BOF::BOFPARAMETER_ARG_FLAG::NONE, BOF_PARAM_DEF_VARIABLE(S_VistaServiceParam_X.AskHelp_B, BOOL, true, 0)},
+    {nullptr, std::string("h"), std::string("Ask help."), "", "", BOF::BOFPARAMETER_ARG_FLAG::NONE, BOF_PARAM_DEF_VARIABLE(S_CanvasServiceParam_X.AskHelp_B, BOOL, true, 0)},
+    {nullptr, std::string("help"), std::string("Ask help."), "", "", BOF::BOFPARAMETER_ARG_FLAG::NONE, BOF_PARAM_DEF_VARIABLE(S_CanvasServiceParam_X.AskHelp_B, BOOL, true, 0)},
     {nullptr, std::string("ll"), std::string("Specifies app log level value."), "", "", BOF::BOFPARAMETER_ARG_FLAG::CMDLINE_LONGOPT_NEED_ARG,
-     BOF_PARAM_DEF_VARIABLE(S_VistaServiceParam_X.LogLevel_E, UINT32, 0, ILF::ILogger::LogSeverity::LOG_SEVERITY_MAX - 1)},
+     BOF_PARAM_DEF_VARIABLE(S_CanvasServiceParam_X.LogLevel_E, UINT32, 0, ILF::ILogger::LogSeverity::LOG_SEVERITY_MAX - 1)},
 
     // WebServerParam_X Options
     {nullptr, "lis",
      "Specifies the server ip address to listen on or the ip address to which "
      "the client must connect to as 127.0.0.1:8080 or 0.0.0.0:8090.",
      "", "", BOF::BOFPARAMETER_ARG_FLAG::CMDLINE_LONGOPT_NEED_ARG | BOF::BOFPARAMETER_ARG_FLAG::IP_FORMAT_SCHEME | BOF::BOFPARAMETER_ARG_FLAG::IP_FORMAT_PORT,
-     BOF_PARAM_DEF_VARIABLE(S_VistaServiceParam_X.VistaEngineParam_X.ListenIpAddress_X, IPV4, 0, 0)},
+     BOF_PARAM_DEF_VARIABLE(S_CanvasServiceParam_X.CanvasEngineParam_X.ListenIpAddress_X, IPV4, 0, 0)},
     {nullptr, std::string("cp"), std::string("Specifies certificate path if you need https."), "", "", BOF::BOFPARAMETER_ARG_FLAG::CMDLINE_LONGOPT_NEED_ARG,
-     BOF_PARAM_DEF_VARIABLE(S_VistaServiceParam_X.VistaEngineParam_X.WebServerParam_X.CertificatePath_S, STDSTRING, 0, 0)},
+     BOF_PARAM_DEF_VARIABLE(S_CanvasServiceParam_X.CanvasEngineParam_X.WebServerParam_X.CertificatePath_S, STDSTRING, 0, 0)},
     {nullptr, std::string("pkp"), std::string("Specifies private key path if you need https."), "", "", BOF::BOFPARAMETER_ARG_FLAG::CMDLINE_LONGOPT_NEED_ARG,
-     BOF_PARAM_DEF_VARIABLE(S_VistaServiceParam_X.VistaEngineParam_X.WebServerParam_X.PrivateKeyPath_S, STDSTRING, 0, 0)},
+     BOF_PARAM_DEF_VARIABLE(S_CanvasServiceParam_X.CanvasEngineParam_X.WebServerParam_X.PrivateKeyPath_S, STDSTRING, 0, 0)},
     {nullptr, std::string("l"), std::string("Log web request and response."), "", "", BOF::BOFPARAMETER_ARG_FLAG::NONE,
-     BOF_PARAM_DEF_VARIABLE(S_VistaServiceParam_X.VistaEngineParam_X.WebServerParam_X.LogRequestAndResponse_B, BOOL, true, 0)},
+     BOF_PARAM_DEF_VARIABLE(S_CanvasServiceParam_X.CanvasEngineParam_X.WebServerParam_X.LogRequestAndResponse_B, BOOL, true, 0)},
     {nullptr, std::string("kac"), std::string("Specifies keep alive count."), "", "", BOF::BOFPARAMETER_ARG_FLAG::CMDLINE_LONGOPT_NEED_ARG,
-     BOF_PARAM_DEF_VARIABLE(S_VistaServiceParam_X.VistaEngineParam_X.WebServerParam_X.KeepAliveMaxCount_U32, UINT32, 1, 0xFFFFFFFF)},
+     BOF_PARAM_DEF_VARIABLE(S_CanvasServiceParam_X.CanvasEngineParam_X.WebServerParam_X.KeepAliveMaxCount_U32, UINT32, 1, 0xFFFFFFFF)},
     {nullptr, std::string("kato"), std::string("Specifies keep alive timeout in ms."), "", "", BOF::BOFPARAMETER_ARG_FLAG::CMDLINE_LONGOPT_NEED_ARG,
-     BOF_PARAM_DEF_VARIABLE(S_VistaServiceParam_X.VistaEngineParam_X.WebServerParam_X.KeepAliveTimeoutInMs_U32, UINT32, 0, 0xFFFFFFFF)},
+     BOF_PARAM_DEF_VARIABLE(S_CanvasServiceParam_X.CanvasEngineParam_X.WebServerParam_X.KeepAliveTimeoutInMs_U32, UINT32, 0, 0xFFFFFFFF)},
     {nullptr, std::string("rto"), std::string("Specifies read timeout in ms."), "", "", BOF::BOFPARAMETER_ARG_FLAG::CMDLINE_LONGOPT_NEED_ARG,
-     BOF_PARAM_DEF_VARIABLE(S_VistaServiceParam_X.VistaEngineParam_X.WebServerParam_X.ReadTimeoutInMs_U32, UINT32, 1, 0xFFFFFFFF)},
+     BOF_PARAM_DEF_VARIABLE(S_CanvasServiceParam_X.CanvasEngineParam_X.WebServerParam_X.ReadTimeoutInMs_U32, UINT32, 1, 0xFFFFFFFF)},
     {nullptr, std::string("wto"), std::string("Specifies write timeout in ms."), "", "", BOF::BOFPARAMETER_ARG_FLAG::CMDLINE_LONGOPT_NEED_ARG,
-     BOF_PARAM_DEF_VARIABLE(S_VistaServiceParam_X.VistaEngineParam_X.WebServerParam_X.WriteTimeoutInMs_U32, UINT32, 1, 0xFFFFFFFF)},
+     BOF_PARAM_DEF_VARIABLE(S_CanvasServiceParam_X.CanvasEngineParam_X.WebServerParam_X.WriteTimeoutInMs_U32, UINT32, 1, 0xFFFFFFFF)},
     {nullptr, std::string("ito"), std::string("Specifies idle timeout in ms."), "", "", BOF::BOFPARAMETER_ARG_FLAG::CMDLINE_LONGOPT_NEED_ARG,
-     BOF_PARAM_DEF_VARIABLE(S_VistaServiceParam_X.VistaEngineParam_X.WebServerParam_X.IdleIntervalInMs_U32, UINT32, 1, 0xFFFFFFFF)},
+     BOF_PARAM_DEF_VARIABLE(S_CanvasServiceParam_X.CanvasEngineParam_X.WebServerParam_X.IdleIntervalInMs_U32, UINT32, 1, 0xFFFFFFFF)},
     {nullptr, std::string("pml"), std::string("Specifies the payload max length in byte."), "", "", BOF::BOFPARAMETER_ARG_FLAG::CMDLINE_LONGOPT_NEED_ARG,
-     BOF_PARAM_DEF_VARIABLE(S_VistaServiceParam_X.VistaEngineParam_X.WebServerParam_X.PayloadMaxLengthInByte_U32, UINT32, 0, 0xFFFFFFFF)},
+     BOF_PARAM_DEF_VARIABLE(S_CanvasServiceParam_X.CanvasEngineParam_X.WebServerParam_X.PayloadMaxLengthInByte_U32, UINT32, 0, 0xFFFFFFFF)},
     {nullptr, std::string("tps"), std::string("Specifies the server thread pool size."), "", "", BOF::BOFPARAMETER_ARG_FLAG::CMDLINE_LONGOPT_NEED_ARG,
-     BOF_PARAM_DEF_VARIABLE(S_VistaServiceParam_X.VistaEngineParam_X.WebServerParam_X.ThreadPoolSize_U32, UINT32, 0, 0xFFFFFFFF)},
+     BOF_PARAM_DEF_VARIABLE(S_CanvasServiceParam_X.CanvasEngineParam_X.WebServerParam_X.ThreadPoolSize_U32, UINT32, 0, 0xFFFFFFFF)},
     {nullptr, std::string("rd"), std::string("Specifies the server root dir"), "", "", BOF::BOFPARAMETER_ARG_FLAG::CMDLINE_LONGOPT_NEED_ARG,
-     BOF_PARAM_DEF_VARIABLE(S_VistaServiceParam_X.VistaEngineParam_X.WebServerParam_X.RootDir_S, STDSTRING, 0, 0)},
+     BOF_PARAM_DEF_VARIABLE(S_CanvasServiceParam_X.CanvasEngineParam_X.WebServerParam_X.RootDir_S, STDSTRING, 0, 0)},
     {nullptr, std::string("app"), std::string("Specifies the web app name."), "", "", BOF::BOFPARAMETER_ARG_FLAG::CMDLINE_LONGOPT_NEED_ARG,
-     BOF_PARAM_DEF_VARIABLE(S_VistaServiceParam_X.VistaEngineParam_X.WebServerParam_X.WebAppParam_X.AppName_S, STDSTRING, 0, 0)},
+     BOF_PARAM_DEF_VARIABLE(S_CanvasServiceParam_X.CanvasEngineParam_X.WebServerParam_X.WebAppParam_X.AppName_S, STDSTRING, 0, 0)},
 };
 // Global and static var
-static std::unique_ptr<VistaDaemon> S_puVistaDaemon = nullptr;
+static std::unique_ptr<CanvasDaemon> S_puCanvasDaemon = nullptr;
 // Original argv, captured at startup so RestartApplication() can re-exec the process with the exact
 // same command line (execv needs a null-terminated argv; argv[argc] is guaranteed NULL by the C runtime).
 static char **S_ppArgv_c = nullptr;
 
 void CleanUp()
 {
-  // LOG_INFO(S_VistaServiceParam_X.VistaEngineParam_X.psILogger, "Shutdown system...");
-  S_puVistaDaemon->Stop();
+  // LOG_INFO(S_CanvasServiceParam_X.CanvasEngineParam_X.psILogger, "Shutdown system...");
+  S_puCanvasDaemon->Stop();
   BOF::Bof_Shutdown();
 }
 
@@ -147,8 +151,7 @@ void RestartApplication()
 {
   const char *pExe_c;
 
-  LOG_INFO(S_VistaServiceParam_X.VistaEngineParam_X.psILogger, "Restart requested: re-exec (marking fds close-on-exec)...");
-  LogToDmesg("Vista restart requested: re-exec");
+  LOG_INFO(S_CanvasServiceParam_X.CanvasEngineParam_X.psILogger, "Restart requested: re-exec (marking fds close-on-exec)...");
 
   S_MarkFileDescriptorsCloseOnExec();
 
@@ -161,13 +164,12 @@ void RestartApplication()
   }
   execv(pExe_c, S_ppArgv_c);
   // execv() only returns on failure.
-  LogToDmesg("Vista restart failed: execv('%s') -> %s", pExe_c, strerror(errno));
 }
 
 // man 7 signal-safety: avoid LOG_INFO in signal handler....
 void SignalHandler(int _Signal_i)
 {
-  if (S_puVistaDaemon)
+  if (S_puCanvasDaemon)
   {
     switch (_Signal_i)
     {
@@ -178,10 +180,10 @@ void SignalHandler(int _Signal_i)
         // (Stop()/Bof_Shutdown()) in normal context. Calling CleanUp() directly from the
         // signal handler is unsafe: Stop()/Bof_Shutdown() lock mutexes, free memory and
         // join threads, which is UB in a signal handler and can deadlock.
-        S_puVistaDaemon->RequestStop();
+        S_puCanvasDaemon->RequestStop();
         break;
       case SIGHUP:
-        // LOG_INFO(S_VistaServiceParam_X.VistaEngineParam_X.psILogger, "SignalHandler: Received SIGHUP - ignoring (could implement config reload)");
+        // LOG_INFO(S_CanvasServiceParam_X.CanvasEngineParam_X.psILogger, "SignalHandler: Received SIGHUP - ignoring (could implement config reload)");
         break;
         /*
   By adding a SIGCHLD signal handler, you ensure that any time a child process
@@ -193,11 +195,11 @@ void SignalHandler(int _Signal_i)
   waitpid() for your child processes—they will not become zombies.
         */
       case SIGCHLD:
-        // LOG_INFO(S_VistaServiceParam_X.VistaEngineParam_X.psILogger, "SignalHandler: Received SIGCHLD");
+        // LOG_INFO(S_CanvasServiceParam_X.CanvasEngineParam_X.psILogger, "SignalHandler: Received SIGCHLD");
         //  while (waitpid((pid_t)-1, 0, WNOHANG) > 0)        {   }
         break;
       default:
-        // LOG_WARNING(S_VistaServiceParam_X.VistaEngineParam_X.psILogger, "SignalHandler: Received unknown signal: {}", _Signal_i);
+        // LOG_WARNING(S_CanvasServiceParam_X.CanvasEngineParam_X.psILogger, "SignalHandler: Received unknown signal: {}", _Signal_i);
         break;
     }
   }
@@ -206,7 +208,7 @@ void SignalHandler(int _Signal_i)
 void SetupSignalHandlers()
 {
   struct sigaction Sa_X;
-  LOG_INFO(S_VistaServiceParam_X.VistaEngineParam_X.psILogger, "Setup Signal Handler for SIGINT, SIGTERM and SIGHUP");
+  LOG_INFO(S_CanvasServiceParam_X.CanvasEngineParam_X.psILogger, "Setup Signal Handler for SIGINT, SIGTERM and SIGHUP");
 
   Sa_X.sa_handler = SignalHandler;
   // initializes the signal mask to be empty, meaning no signals will be blocked
@@ -238,7 +240,7 @@ child processes—they will not become zombies.
 }
 #endif
 
-#define VISTA_ON_CORE 15 // Need max perf
+#define CANVAS_ON_CORE 15 // Need max perf
 int main(int _Argc_i, char *_pArgv_c[])
 {
   int Rts_i = 1;
@@ -258,7 +260,7 @@ int main(int _Argc_i, char *_pArgv_c[])
   ILF::Backend::SpdLogManager::Config LoggerGlobalWebServerParam_X{
       .msg_queue_size = 1024,                     // Number of messages slots in queue (a message
                                                   // slot is 512 bytes)
-      .global_log_name = "Vista_All",             // Set a name if you want a global log channel
+      .global_log_name = "Canvas_All",            // Set a name if you want a global log channel
                                                   // (empty means no global channel)
       .global_log_max_log_size = 4 * 1024 * 1024, // Maximum size in bytes of a log of the global channel
       .global_log_max_nb_of_logs = 4              // Maximum number of logs rotation of the global channel
@@ -281,14 +283,14 @@ int main(int _Argc_i, char *_pArgv_c[])
 #else
   cpu_set_t CpuSet_X;
   CPU_ZERO(&CpuSet_X);
-  CPU_SET(VISTA_ON_CORE, &CpuSet_X);
+  CPU_SET(CANVAS_ON_CORE, &CpuSet_X);
   if (sched_setaffinity(0, sizeof(cpu_set_t), &CpuSet_X) == 0)
   {
-    printf("Successfully bound process to E-core %d\n", VISTA_ON_CORE);
+    printf("Successfully bound process to E-core %d\n", CANVAS_ON_CORE);
   }
   else
   {
-    printf("Warning: Failed to set CPU affinity to core %d\n", VISTA_ON_CORE);
+    printf("Warning: Failed to set CPU affinity to core %d\n", CANVAS_ON_CORE);
   }
   psLoggerManager = std::make_shared<ILF::Backend::SpdLogManager>("/var/log/evs", LoggerGlobalWebServerParam_X);
 #endif
@@ -297,58 +299,58 @@ int main(int _Argc_i, char *_pArgv_c[])
     psLoggerFactory = std::make_shared<ILF::Backend::SpdLogFactory>(psLoggerManager, LoggerFactoryWebServerParam_X);
     if (psLoggerFactory)
     {
-      S_VistaServiceParam_X.VistaEngineParam_X.psILogger = psLoggerFactory->create("Vista", "Main");
-      if (S_VistaServiceParam_X.VistaEngineParam_X.psILogger)
+      S_CanvasServiceParam_X.CanvasEngineParam_X.psILogger = psLoggerFactory->create("Canvas", "Main");
+      if (S_CanvasServiceParam_X.CanvasEngineParam_X.psILogger)
       {
-        S_VistaServiceParam_X.VistaEngineParam_X.psILogger->set_severity(ILF::ILogger::LogSeverity::LOG_SEVERITY_DEBUG);
+        S_CanvasServiceParam_X.CanvasEngineParam_X.psILogger->set_severity(ILF::ILogger::LogSeverity::LOG_SEVERITY_DEBUG);
         Sts_E = BOF::Bof_Initialize(StdParam_X);
         if (BOF::Bof_GetCurrentAppDirectory(Cwd) == BOF_ERR_NO_ERROR)
         {
           Sts_E = BOF::Bof_SetCurrentDirectory(Cwd);
         }
-        LOG_INFO(S_VistaServiceParam_X.VistaEngineParam_X.psILogger, "\nPwd {}\nRunning BofStd V {} on {} under {} (Err {})", Cwd.FullPathName(false), StdParam_X.Version_S, StdParam_X.ComputerName_S,
-                 StdParam_X.OsName_S, BOF::Bof_ErrorCode(Sts_E));
+        LOG_INFO(S_CanvasServiceParam_X.CanvasEngineParam_X.psILogger, "\nPwd {}\nRunning BofStd V {} on {} under {} (Err {})", Cwd.FullPathName(false), StdParam_X.Version_S,
+                 StdParam_X.ComputerName_S, StdParam_X.OsName_S, BOF::Bof_ErrorCode(Sts_E));
         assert(Sts_E == BOF_ERR_NO_ERROR);
         if (Sts_E == BOF_ERR_NO_ERROR)
         {
-          LOG_INFO(S_VistaServiceParam_X.VistaEngineParam_X.psILogger, "Set application's argument default value");
+          LOG_INFO(S_CanvasServiceParam_X.CanvasEngineParam_X.psILogger, "Set application's argument default value");
           // App default value different from .Reset()
 
-          S_VistaServiceParam_X.LogLevel_E = ILF::ILogger::LogSeverity::LOG_SEVERITY_INFO;
-          S_VistaServiceParam_X.VistaEngineParam_X.WebServerParam_X.ServerStartStopTimeoutInMs_U32 = 2000;
+          S_CanvasServiceParam_X.LogLevel_E = ILF::ILogger::LogSeverity::LOG_SEVERITY_INFO;
+          S_CanvasServiceParam_X.CanvasEngineParam_X.WebServerParam_X.ServerStartStopTimeoutInMs_U32 = 2000;
           /*
           KeepAliveMaxCount_U32 sets the maximum number of requests that can be handled over a single persistent TCP connection.
           KeepAliveTimeoutInMs_U32 sets the maximum time, in milliseconds, that the server will wait for the next request on a
           persistent connection.
           */
-          S_VistaServiceParam_X.VistaEngineParam_X.WebServerParam_X.KeepAliveMaxCount_U32 = 5000;
-          S_VistaServiceParam_X.VistaEngineParam_X.WebServerParam_X.KeepAliveTimeoutInMs_U32 = 10000;
+          S_CanvasServiceParam_X.CanvasEngineParam_X.WebServerParam_X.KeepAliveMaxCount_U32 = 5000;
+          S_CanvasServiceParam_X.CanvasEngineParam_X.WebServerParam_X.KeepAliveTimeoutInMs_U32 = 10000;
 #pragma message("Fix Cors behaviour in release of the product")
-#if defined(NDEBUG)                                                                       // We are in Release compil
-          S_VistaServiceParam_X.VistaEngineParam_X.WebServerParam_X.DisableCors_B = true; // false;
+#if defined(NDEBUG)                                                                         // We are in Release compil
+          S_CanvasServiceParam_X.CanvasEngineParam_X.WebServerParam_X.DisableCors_B = true; // false;
 #else
-          S_VistaServiceParam_X.VistaEngineParam_X.WebServerParam_X.DisableCors_B = true;
+          S_CanvasServiceParam_X.CanvasEngineParam_X.WebServerParam_X.DisableCors_B = true;
 #endif
-          S_VistaServiceParam_X.VistaEngineParam_X.WebServerParam_X.ReadTimeoutInMs_U32 = 1000;
-          S_VistaServiceParam_X.VistaEngineParam_X.WebServerParam_X.WriteTimeoutInMs_U32 = 1000;
-          S_VistaServiceParam_X.VistaEngineParam_X.WebServerParam_X.IdleIntervalInMs_U32 = 2000;
-          S_VistaServiceParam_X.VistaEngineParam_X.WebServerParam_X.PayloadMaxLengthInByte_U32 = 0x100000;
-          S_VistaServiceParam_X.VistaEngineParam_X.WebServerParam_X.ThreadPoolSize_U32 = 8;
+          S_CanvasServiceParam_X.CanvasEngineParam_X.WebServerParam_X.ReadTimeoutInMs_U32 = 1000;
+          S_CanvasServiceParam_X.CanvasEngineParam_X.WebServerParam_X.WriteTimeoutInMs_U32 = 1000;
+          S_CanvasServiceParam_X.CanvasEngineParam_X.WebServerParam_X.IdleIntervalInMs_U32 = 2000;
+          S_CanvasServiceParam_X.CanvasEngineParam_X.WebServerParam_X.PayloadMaxLengthInByte_U32 = 0x100000;
+          S_CanvasServiceParam_X.CanvasEngineParam_X.WebServerParam_X.ThreadPoolSize_U32 = 8;
 
           AppName_S = AppName.FullPathName(false);
           BOF_GET_FILE_FROM_PATH(AppName_S.c_str(), pFile_c);
-          S_VistaServiceParam_X.VistaEngineParam_X.WebServerParam_X.WebAppParam_X.AppName_S = pFile_c;
-          S_VistaServiceParam_X.VistaEngineParam_X.WebServerParam_X.RootDir_S = Cwd.FullPathName(false) + "www/";
-          LOG_INFO(S_VistaServiceParam_X.VistaEngineParam_X.psILogger, "{} argument specified", _Argc_i);
+          S_CanvasServiceParam_X.CanvasEngineParam_X.WebServerParam_X.WebAppParam_X.AppName_S = pFile_c;
+          S_CanvasServiceParam_X.CanvasEngineParam_X.WebServerParam_X.RootDir_S = Cwd.FullPathName(false) + "www/";
+          LOG_INFO(S_CanvasServiceParam_X.CanvasEngineParam_X.psILogger, "{} argument specified", _Argc_i);
           if (_Argc_i == 1)
           {
 #if _WIN32
-            snprintf(pBuffer_c, sizeof(pBuffer_c), "--lis=tcp://0.0.0.0:7000;--cp=../assets/ssl/certs/vista-cert.crt;--pkp=../assets/ssl/private/vista-cert.key");
+            snprintf(pBuffer_c, sizeof(pBuffer_c), "--lis=tcp://0.0.0.0:7000;--cp=../assets/ssl/certs/canvas-cert.crt;--pkp=../assets/ssl/private/canvas-cert.key");
             snprintf(pBuffer_c, sizeof(pBuffer_c), "--lis=tcp://0.0.0.0:7000"); // Not secure (to test using swagger)
 #else
-            snprintf(pBuffer_c, sizeof(pBuffer_c), "--lis=tcp://0.0.0.0:7000;--cp=./assets/ssl/certs/vista-cert.crt;--pkp=./assets/ssl/private/vista-cert.key");
+            snprintf(pBuffer_c, sizeof(pBuffer_c), "--lis=tcp://0.0.0.0:7000;--cp=./assets/ssl/certs/canvas-cert.crt;--pkp=./assets/ssl/private/canvas-cert.key");
 #endif
-            LOG_INFO(S_VistaServiceParam_X.VistaEngineParam_X.psILogger, "Force command line to '{}'", pBuffer_c);
+            LOG_INFO(S_CanvasServiceParam_X.CanvasEngineParam_X.psILogger, "Force command line to '{}'", pBuffer_c);
             CmdLineParser.ToByte(pBuffer_c, S_pCommandLineOption_X, nullptr, nullptr);
           }
           else
@@ -357,64 +359,64 @@ int main(int _Argc_i, char *_pArgv_c[])
           }
 
           // HTTPS requires both files. If one is missing, disable HTTPS cleanly.
-          HasCertPath_B = !S_VistaServiceParam_X.VistaEngineParam_X.WebServerParam_X.CertificatePath_S.empty();
-          HasKeyPath_B = !S_VistaServiceParam_X.VistaEngineParam_X.WebServerParam_X.PrivateKeyPath_S.empty();
+          HasCertPath_B = !S_CanvasServiceParam_X.CanvasEngineParam_X.WebServerParam_X.CertificatePath_S.empty();
+          HasKeyPath_B = !S_CanvasServiceParam_X.CanvasEngineParam_X.WebServerParam_X.PrivateKeyPath_S.empty();
           CertExists_B = false;
           KeyExists_B = false;
           if ((HasCertPath_B) || (HasKeyPath_B))
           {
-            CertExists_B = HasCertPath_B && std::filesystem::exists(S_VistaServiceParam_X.VistaEngineParam_X.WebServerParam_X.CertificatePath_S);
-            KeyExists_B = HasKeyPath_B && std::filesystem::exists(S_VistaServiceParam_X.VistaEngineParam_X.WebServerParam_X.PrivateKeyPath_S);
+            CertExists_B = HasCertPath_B && std::filesystem::exists(S_CanvasServiceParam_X.CanvasEngineParam_X.WebServerParam_X.CertificatePath_S);
+            KeyExists_B = HasKeyPath_B && std::filesystem::exists(S_CanvasServiceParam_X.CanvasEngineParam_X.WebServerParam_X.PrivateKeyPath_S);
             if (!(CertExists_B && KeyExists_B))
             {
-              LOG_WARNING(S_VistaServiceParam_X.VistaEngineParam_X.psILogger, "HTTPS disabled: certificate/key file missing (cert='{}' exists={} key='{}' exists={})",
-                          S_VistaServiceParam_X.VistaEngineParam_X.WebServerParam_X.CertificatePath_S, CertExists_B, S_VistaServiceParam_X.VistaEngineParam_X.WebServerParam_X.PrivateKeyPath_S,
+              LOG_WARNING(S_CanvasServiceParam_X.CanvasEngineParam_X.psILogger, "HTTPS disabled: certificate/key file missing (cert='{}' exists={} key='{}' exists={})",
+                          S_CanvasServiceParam_X.CanvasEngineParam_X.WebServerParam_X.CertificatePath_S, CertExists_B, S_CanvasServiceParam_X.CanvasEngineParam_X.WebServerParam_X.PrivateKeyPath_S,
                           KeyExists_B);
-              S_VistaServiceParam_X.VistaEngineParam_X.WebServerParam_X.CertificatePath_S.clear();
-              S_VistaServiceParam_X.VistaEngineParam_X.WebServerParam_X.PrivateKeyPath_S.clear();
+              S_CanvasServiceParam_X.CanvasEngineParam_X.WebServerParam_X.CertificatePath_S.clear();
+              S_CanvasServiceParam_X.CanvasEngineParam_X.WebServerParam_X.PrivateKeyPath_S.clear();
             }
           }
-          LOG_INFO(S_VistaServiceParam_X.VistaEngineParam_X.psILogger, "HTTP(S) Status: cert_path_present={} key_path_present={} cert_exists={} key_exists={}", HasCertPath_B, HasKeyPath_B,
+          LOG_INFO(S_CanvasServiceParam_X.CanvasEngineParam_X.psILogger, "HTTP(S) Status: cert_path_present={} key_path_present={} cert_exists={} key_exists={}", HasCertPath_B, HasKeyPath_B,
                    CertExists_B, KeyExists_B);
           CmdLineParser.BuildHelpString(S_pCommandLineOption_X, AppName.FileNameWithoutExtension() + '\n', HelpString_S);
 
-          LOG_INFO(S_VistaServiceParam_X.VistaEngineParam_X.psILogger, "Vista Service is starting...");
-          LOG_INFO(S_VistaServiceParam_X.VistaEngineParam_X.psILogger, "Cli:\n{}", HelpString_S);
+          LOG_INFO(S_CanvasServiceParam_X.CanvasEngineParam_X.psILogger, "Canvas Service is starting...");
+          LOG_INFO(S_CanvasServiceParam_X.CanvasEngineParam_X.psILogger, "Cli:\n{}", HelpString_S);
 
-          if (S_VistaServiceParam_X.AskHelp_B)
+          if (S_CanvasServiceParam_X.AskHelp_B)
           {
-            LOG_INFO(S_VistaServiceParam_X.VistaEngineParam_X.psILogger, "App working parameters:\n{}", HelpString_S);
+            LOG_INFO(S_CanvasServiceParam_X.CanvasEngineParam_X.psILogger, "App working parameters:\n{}", HelpString_S);
           }
           else
           {
-            S_VistaServiceParam_X.VistaEngineParam_X.psILogger->set_severity(S_VistaServiceParam_X.LogLevel_E);
+            S_CanvasServiceParam_X.CanvasEngineParam_X.psILogger->set_severity(S_CanvasServiceParam_X.LogLevel_E);
             // Setup signal handling
             SetupSignalHandlers();
             //  Create daemon instance
-            S_puVistaDaemon = std::make_unique<VistaDaemon>(S_VistaServiceParam_X.VistaEngineParam_X);
-            // LOG_INFO(S_VistaServiceParam_X.VistaEngineParam_X.psILogger, "Create daemon {}", static_cast<void *>(S_puVistaDaemon.get()));
-            if (S_puVistaDaemon)
+            S_puCanvasDaemon = std::make_unique<CanvasDaemon>(S_CanvasServiceParam_X.CanvasEngineParam_X);
+            // LOG_INFO(S_CanvasServiceParam_X.CanvasEngineParam_X.psILogger, "Create daemon {}", static_cast<void *>(S_puCanvasDaemon.get()));
+            if (S_puCanvasDaemon)
             {
               Rts_i = 2;
 
               // Initialize
-              LOG_INFO(S_VistaServiceParam_X.VistaEngineParam_X.psILogger, "Start Daemon");
-              if (S_puVistaDaemon->Start())
+              LOG_INFO(S_CanvasServiceParam_X.CanvasEngineParam_X.psILogger, "Start Daemon");
+              if (S_puCanvasDaemon->Start())
               {
                 Rts_i = 0;
               }
               else
               {
-                LOG_ERROR(S_VistaServiceParam_X.VistaEngineParam_X.psILogger, "Failed to start daemon");
+                LOG_ERROR(S_CanvasServiceParam_X.CanvasEngineParam_X.psILogger, "Failed to start daemon");
               }
             }
             else
             {
-              LOG_ERROR(S_VistaServiceParam_X.VistaEngineParam_X.psILogger, "Unable to create Vista Daemon");
+              LOG_ERROR(S_CanvasServiceParam_X.CanvasEngineParam_X.psILogger, "Unable to create Canvas Daemon");
             }
-          } // else  if (S_VistaServiceParam_X.AskHelp_B)
-          LOG_INFO(S_VistaServiceParam_X.VistaEngineParam_X.psILogger, "Clean up resources...");
-          if (S_puVistaDaemon && S_puVistaDaemon->IsRestartRequested())
+          } // else  if (S_CanvasServiceParam_X.AskHelp_B)
+          LOG_INFO(S_CanvasServiceParam_X.CanvasEngineParam_X.psILogger, "Clean up resources...");
+          if (S_puCanvasDaemon && S_puCanvasDaemon->IsRestartRequested())
           {
             RestartApplication(); // re-exec back to initial state; only returns if execv() failed
           }
@@ -422,7 +424,7 @@ int main(int _Argc_i, char *_pArgv_c[])
         }
         else
         {
-          LOG_ERROR(S_VistaServiceParam_X.VistaEngineParam_X.psILogger, "Unable to initialize Bof ({})", BOF::Bof_ErrorCode(Sts_E));
+          LOG_ERROR(S_CanvasServiceParam_X.CanvasEngineParam_X.psILogger, "Unable to initialize Bof ({})", BOF::Bof_ErrorCode(Sts_E));
         }
       }
       else

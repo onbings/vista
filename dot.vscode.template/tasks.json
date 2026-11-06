@@ -57,26 +57,26 @@
         },
         {
             "label": "Tsk:KillLocal",
-            "detail": "Kill local onbings-vista-service/tests instances before building (avoids LNK1168 file lock)",
+            "detail": "Kill local onbing-vista-service/tests instances before building (avoids LNK1168 file lock)",
             "type": "process",
             "command": "powershell",
             "args": [
                 "-NoProfile",
                 "-Command",
-                "Get-Process -Name onbings-vista-service,onbings-vista-tests -ErrorAction SilentlyContinue | Stop-Process -Force; exit 0"
+                "Get-Process -Name onbing-vista-service,onbing-vista-tests -ErrorAction SilentlyContinue | Stop-Process -Force; exit 0"
             ],
             "linux": {
                 "command": "bash",
                 "args": [
                     "-c",
-                    "pkill -9 -f onbings-vista-service; pkill -9 -f onbings-vista-tests; true"
+                    "pkill -9 -f onbing-vista-service; pkill -9 -f onbing-vista-tests; true"
                 ]
             },
             "osx": {
                 "command": "bash",
                 "args": [
                     "-c",
-                    "pkill -9 -f onbings-vista-service; pkill -9 -f onbings-vista-tests; true"
+                    "pkill -9 -f onbing-vista-service; pkill -9 -f onbing-vista-tests; true"
                 ]
             },
             "group": "build",
@@ -95,12 +95,11 @@
         },
         {
             "label": "Tsk:MkDir",
-            "detail": "Create remote directories to deploy package and ut data under linux",
-            "type": "shell",
-            "command": "ssh",
+            "detail": "Create remote deployment directories from .vscode/settings.json",
+            "type": "process",
+            "command": "${workspaceFolder}/.vscode/remote-task.sh",
             "args": [
-                "${config:targetUser}@${config:targetHost}",
-                "mkdir -p /tmp/${env:USER}_vista/lib && mkdir -p /tmp/${env:USER}_vista/bin && mkdir -p /tmp/${env:USER}_vista/data && mkdir -p /tmp/${env:USER}_vista/bin/assets && mkdir -p /tmp/${env:USER}_vista/python_package_1"
+                "mkdir"
             ],
             "group": "build"
         },
@@ -109,12 +108,11 @@
             "dependsOn": [
                 "Tsk:BldPrj"
             ],
-            "detail": "Kill specific gdbserver process listening on ${config:cppGdbPort}",
+            "detail": "Stop remote gdbserver and configured processes",
             "type": "process",
-            "command": "bash",
+            "command": "${workspaceFolder}/.vscode/remote-task.sh",
             "args": [
-                "-c",
-                "ssh ${config:targetUser}@${config:targetHost} 'pkill -f \"gdbserver.*${config:cppGdbPort}\" || killall -9 onbings-vista-tests || true' || true"
+                "stop"
             ],
             "group": "build",
             "isBackground": false,
@@ -132,9 +130,13 @@
                 "Tsk:KillAll",
                 "Tsk:MkDir"
             ],
-            "detail": "Copy all built artifacts (bin, lib, data) to remote directory using rsync",
-            "type": "shell",
-            "command": "rsync -av \"${workspaceFolder}/out/build/all-p6x-debug/binaries/bin/\" \"${config:targetUser}@${config:targetHost}:/tmp/${env:USER}_vista/bin/\" && rsync -av \"${workspaceFolder}/out/build/all-p6x-debug/binaries/lib/\" \"${config:targetUser}@${config:targetHost}:/tmp/${env:USER}_vista/lib/\" && rsync -av \"${workspaceFolder}/code/sources/onbings-vista-lib/assets/\" \"${config:targetUser}@${config:targetHost}:/tmp/${env:USER}_vista/bin/assets/\"",
+            "detail": "Deploy the all-p6x-debug build to the remote target",
+            "type": "process",
+            "command": "${workspaceFolder}/.vscode/remote-task.sh",
+            "args": [
+                "deploy",
+                "all-p6x-debug"
+            ],
             "group": "build"
         },
         {
@@ -143,22 +145,27 @@
                 "Tsk:KillAll",
                 "Tsk:MkDir"
             ],
-            "detail": "Copy all built artifacts (bin, lib, data) to remote directory using rsync",
-            "type": "shell",
-            "command": "rsync -av \"${workspaceFolder}/out/build/all-p6x-release/binaries/bin/\" \"${config:targetUser}@${config:targetHost}:/tmp/${env:USER}_vista/bin/\" && rsync -av \"${workspaceFolder}/out/build/all-p6x-release/binaries/lib/\" \"${config:targetUser}@${config:targetHost}:/tmp/${env:USER}_vista/lib/\" && rsync -av \"${workspaceFolder}/code/sources/onbings-vista-lib/assets/\" \"${config:targetUser}@${config:targetHost}:/tmp/${env:USER}_vista/bin/assets/\"",
+            "detail": "Deploy the all-p6x-release build to the remote target",
+            "type": "process",
+            "command": "${workspaceFolder}/.vscode/remote-task.sh",
+            "args": [
+                "deploy",
+                "all-p6x-release"
+            ],
             "group": "build"
         },
         {
-            "label": "Tsk:PrismTestCpp",
-            "detail": "Debug vista Test Cpp with C++ gdb Debugger (auto debug/release from active CMake preset)",
+            "label": "Tsk:vistaTestCpp",
+            "detail": "Build, deploy and run vista tests under remote gdbserver",
             "dependsOn": [
                 "Tsk:BldPrj"
             ],
             "type": "process",
-            "command": "bash",
+            "command": "${workspaceFolder}/.vscode/remote-task.sh",
             "args": [
-                "-lc",
-                "preset='${command:cmake.activeConfigurePresetName}'; preset_lc=\"${preset,,}\"; if [[ \"$preset_lc\" =~ -r(e)?lease$ ]]; then build_flavor='release'; build_dir='all-p6x-release'; else build_flavor='debug'; build_dir='all-p6x-debug'; fi; echo \"[TASK] Active configure preset: $preset\"; echo \"[TASK] Selected flavor: $build_flavor ($build_dir)\"; ssh ${config:targetUser}@${config:targetHost} 'pkill -f \"gdbserver.*${config:cppGdbPort}\" || killall -9 onbings-vista-tests || true' || true; ssh ${config:targetUser}@${config:targetHost} 'mkdir -p /tmp/${env:USER}_vista/lib && mkdir -p /tmp/${env:USER}_vista/bin && mkdir -p /tmp/${env:USER}_vista/data && mkdir -p /tmp/${env:USER}_vista/bin/assets && mkdir -p /tmp/${env:USER}_vista/python_package_1'; rsync -av \"${workspaceFolder}/out/build/${build_dir}/binaries/bin/\" \"${config:targetUser}@${config:targetHost}:/tmp/${env:USER}_vista/bin/\" && rsync -av \"${workspaceFolder}/out/build/${build_dir}/binaries/lib/\" \"${config:targetUser}@${config:targetHost}:/tmp/${env:USER}_vista/lib/\" && rsync -av \"${workspaceFolder}/code/sources/onbings-vista-lib/assets/\" \"${config:targetUser}@${config:targetHost}:/tmp/${env:USER}_vista/bin/assets/\"; ssh -t ${config:targetUser}@${config:targetHost} 'cd /tmp/${env:USER}_vista/bin && export LD_LIBRARY_PATH=./assets/axelera/venv/lib && gdbserver localhost:${config:cppGdbPort} /tmp/${env:USER}_vista/bin/onbings-vista-tests'"
+                "debug",
+                "${command:cmake.activeConfigurePresetName}",
+                "bin/onbing-vista-tests"
             ],
             "group": "build",
             "isBackground": true,
@@ -174,16 +181,17 @@
             }
         },
         {
-            "label": "Tsk:PrismServiceCpp",
-            "detail": "Debug vista Service Cpp with C++ gdb Debugger (auto debug/release from active CMake preset)",
+            "label": "Tsk:vistaServiceCpp",
+            "detail": "Build, deploy and run the vista service under remote gdbserver",
             "dependsOn": [
                 "Tsk:BldPrj"
             ],
             "type": "process",
-            "command": "bash",
+            "command": "${workspaceFolder}/.vscode/remote-task.sh",
             "args": [
-                "-lc",
-                "preset='${command:cmake.activeConfigurePresetName}'; preset_lc=\"${preset,,}\"; if [[ \"$preset_lc\" =~ -r(e)?lease$ ]]; then build_flavor='release'; build_dir='all-p6x-release'; else build_flavor='debug'; build_dir='all-p6x-debug'; fi; echo \"[TASK] Active configure preset: $preset\"; echo \"[TASK] Selected flavor: $build_flavor ($build_dir)\"; ssh ${config:targetUser}@${config:targetHost} 'pkill -f \"gdbserver.*${config:cppGdbPort}\" || killall -9 onbings-vista-tests || true' || true; ssh ${config:targetUser}@${config:targetHost} 'mkdir -p /tmp/${env:USER}_vista/lib && mkdir -p /tmp/${env:USER}_vista/bin && mkdir -p /tmp/${env:USER}_vista/data && mkdir -p /tmp/${env:USER}_vista/bin/assets && mkdir -p /tmp/${env:USER}_vista/python_package_1'; rsync -av \"${workspaceFolder}/out/build/${build_dir}/binaries/bin/\" \"${config:targetUser}@${config:targetHost}:/tmp/${env:USER}_vista/bin/\" && rsync -av \"${workspaceFolder}/out/build/${build_dir}/binaries/lib/\" \"${config:targetUser}@${config:targetHost}:/tmp/${env:USER}_vista/lib/\" && rsync -av \"${workspaceFolder}/code/sources/onbings-vista-lib/assets/\" \"${config:targetUser}@${config:targetHost}:/tmp/${env:USER}_vista/bin/assets/\"; ssh -t ${config:targetUser}@${config:targetHost} 'cd /tmp/${env:USER}_vista/bin &&      && gdbserver localhost:${config:cppGdbPort} /tmp/${env:USER}_vista/bin/onbings-vista-service'"
+                "debug",
+                "${command:cmake.activeConfigurePresetName}",
+                "bin/onbing-vista-service"
             ],
             "group": "build",
             "isBackground": true,

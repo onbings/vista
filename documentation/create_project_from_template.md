@@ -119,6 +119,9 @@ Scaffold `prism` for company `evs-hwfw`, skipping the `out` build folder
     --exclude out
 ```
 
+cd c:\pro\onbings-vista
+.\venv\Scripts\python.exe documentation\create_project_from_template.py -s C:\pro\onbings-vista -c "evs-hwfw" -p "canvas" -d W:/mnt/pro/evs-hwfw-canvas --exclude out --exclude venv
+
 Preview the operation first (nothing is written):
 
 ```powershell

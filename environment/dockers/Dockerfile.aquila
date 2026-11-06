@@ -1,0 +1,252 @@
+# Jammy 22.04, pinned by digest for reproducibility
+ARG OS_IMAGE=ubuntu:22.04@sha256:5ec03bb3441e8b0bf3b4f9cd4629a1ae763010dc3035bb8da3ae6cf026486401
+FROM dockerhub.artifactory.evs.tv/$OS_IMAGE AS image_base
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+FROM image_base AS image_devel
+
+# =====================================
+# == GENERAL TOOLS FROM DISTRIBUTION ==
+# =====================================
+
+# Install required tools from distribution
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      build-essential \
+      ca-certificates \
+      curl \
+      gdb \
+      git \
+      lcov \
+      mono-complete \
+      nano \
+      ninja-build \
+      openssh-client \
+      valgrind \
+      vim \
+      wget \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install GCC
+ARG GCC_VER=14
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gnupg \
+    software-properties-common \
+    && add-apt-repository ppa:ubuntu-toolchain-r/test -y \
+    && apt-get update && apt-get install -y --no-install-recommends \
+    gcc-${GCC_VER} \
+    g++-${GCC_VER} \
+    && apt-get purge -y --auto-remove software-properties-common gnupg \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set installed GCC as the default system-wide 'gcc'
+# including all companions tools (e.g. gcov, etc, ...)
+RUN PRIMARY=/usr/bin/gcc-${GCC_VER} \
+    && SLAVES=$(for bin in /usr/bin/*-${GCC_VER}; do \
+         [ "$bin" = "$PRIMARY" ] && continue; \
+         name=$(basename "$bin" "-${GCC_VER}"); \
+         [ "$name" = "cpp" ] && continue; \
+         echo "--slave /usr/bin/$name $name $bin"; \
+       done) \
+    && update-alternatives --install /usr/bin/gcc gcc "$PRIMARY" 100 $SLAVES \
+    && update-alternatives --install /usr/bin/cpp cpp /usr/bin/cpp-${GCC_VER} 100
+
+ENV CC=gcc
+ENV CXX=g++
+
+# ============
+# == PYTHON ==
+# ============
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libbz2-dev \
+    libffi-dev \
+    liblzma-dev \
+    libreadline-dev \
+    libsqlite3-dev \
+    libssl-dev \
+    libzstd-dev \
+    pkg-config \
+    zlib1g-dev \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python
+ARG PYTHON_VERSION=3.12.9
+RUN cd /tmp \
+    && VERSION_MA_MI="$(echo $PYTHON_VERSION | cut -d '.' -f 1)"."$(echo $PYTHON_VERSION | cut -d '.' -f 2)" \
+    && mkdir python \
+    && wget -qO- "https://www.python.org/ftp/python/$PYTHON_VERSION/Python-$PYTHON_VERSION.tgz" | tar --strip-component=1 -xz -C /tmp/python \
+    && cd /tmp/python \
+    && ./configure --enable-optimizations --enable-shared LDFLAGS=-Wl,-rpath=/usr/local/lib \
+    && make altinstall \
+    && ldconfig \
+    && update-alternatives --install /usr/bin/python3 python3 /usr/local/bin/python$VERSION_MA_MI 1 \
+    && update-alternatives --set python3 /usr/local/bin/python$VERSION_MA_MI \
+    && python$VERSION_MA_MI --version \
+    && rm -rf /tmp/python
+
+# Ensure pip, setuptools, and wheel are installed and up to date
+RUN python3 -m ensurepip --upgrade \
+    && python3 -m pip install --upgrade pip setuptools wheel
+
+# ===========
+# == CMAKE ==
+# ===========
+
+ARG CMAKE_VERSION=4.4.4
+
+# Install cmake
+RUN wget -qO- "https://github.com/Kitware/CMake/releases/download/v$CMAKE_VERSION/cmake-$CMAKE_VERSION-linux-x86_64.tar.gz" | tar --strip-components=1 -xz -C /usr/local
+
+ENV PATH=/usr/local/cmake/bin:$PATH
+
+# ==========================
+# == VCPKG BINARY CACHING ==
+# ==========================
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    unzip \
+    zip \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create a NuGet configuration file into /etc/opt/NuGet/Config
+ENV NUGET_COMMON_APPLICATION_DATA=/etc/opt
+
+ARG VCPKG_VERSION=2026.07.29
+RUN cd /tmp \
+    && git clone --depth 1 --branch $VCPKG_VERSION https://github.com/microsoft/vcpkg.git \
+    && cd /tmp/vcpkg \
+    && ./bootstrap-vcpkg.sh --disableMetrics \
+    && NUGET=$(./vcpkg fetch nuget | tail -1) \
+    && NUGET_CONFIG="$NUGET_COMMON_APPLICATION_DATA/NuGet/Config" \
+    && echo "NUGET is at $NUGET" \
+    && mkdir -p $NUGET_COMMON_APPLICATION_DATA/NuGet/ \
+    && touch $NUGET_CONFIG \
+    && echo '<?xml version="1.0" encoding="utf-8"?>' >> $NUGET_CONFIG \
+    && echo '<configuration>'  >> $NUGET_CONFIG \
+    && echo '</configuration>' >> $NUGET_CONFIG \
+    && mono $NUGET config -ConfigFile $NUGET_CONFIG \
+    && mono $NUGET sources Add -Name Artifactory -Source https://artifactory.evs.tv/artifactory/api/nuget/evs-vcpkg-build-nuget -ConfigFile $NUGET_CONFIG \
+    && chmod 666 $NUGET_CONFIG \
+    && rm -rf /tmp/vcpkg
+
+# Register environment variables
+ENV VCPKG_USE_NUGET_CACHE=1
+ENV VCPKG_BINARY_SOURCES="default,readwrite;nugetconfig,/etc/opt/NuGet/Config,read"
+
+# ==============
+# == APPIMAGE ==
+# ==============
+
+# Install required packages for AppImages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      binutils \
+      desktop-file-utils \
+      file \
+      fuse \
+      libfuse2 \
+      squashfs-tools \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Get the linuxdeploy tool to create AppImage and
+# remove the "strip" binary bundled with it as we
+# are going to cross-compile.
+ARG LINUXDEPLOY_VERSION=1-alpha-20250213-2
+RUN cd /tmp \
+    && wget https://github.com/linuxdeploy/linuxdeploy/releases/download/${LINUXDEPLOY_VERSION}/linuxdeploy-x86_64.AppImage \
+    && chmod 755 /tmp/linuxdeploy-x86_64.AppImage \
+    && /tmp/linuxdeploy-x86_64.AppImage --appimage-extract \
+    && rm /tmp/squashfs-root/usr/bin/strip \
+    && /tmp/squashfs-root/plugins/linuxdeploy-plugin-appimage/appimagetool-prefix/usr/bin/appimagetool -gn squashfs-root/ \
+    && rm -r /tmp/squashfs-root \
+    && mv /tmp/linuxdeploy-x86_64.AppImage /usr/local/bin/
+
+# ================
+# == TOOLCHAINS ==
+# ================
+
+# =========
+# == P6X ==
+# =========
+
+RUN mkdir -p /opt/sdk/p6x \
+    && curl -fsSL https://artifactory.evs.tv:443/artifactory/evs-hw-release-generic/SDK/XT-NG/p6x/evs-p6x-sdk-1.2.4.98.tar.gz -o /tmp/sdk.tar.gz \
+    && tar --strip-component=1 -xzf /tmp/sdk.tar.gz -C /opt/sdk/p6x \
+    && /opt/sdk/p6x/relocate-sdk.sh \
+    && rm -rf /tmp/sdk.tar.gz
+
+# Add the toolchain file
+ADD toolchains/p6x_toolchain.cmake /opt/sdk/p6x/toolchain.cmake
+
+# Register it
+ENV P6X_TOOLCHAIN_FILE="/opt/sdk/p6x/toolchain.cmake"
+
+# =========
+# == R6X ==
+# =========
+
+RUN mkdir -p /opt/sdk/r6x \
+    && curl -fsSL https://artifactory.evs.tv:443/artifactory/evs-hw-release-generic/Dev/toolchains/arm/gcc-13.3.1-2024-06-evs.02-x86_64-arm-evs-linux-gnueabihf.tar.gz -o /tmp/sdk.tar.gz \
+    && tar --strip-component=1 -xzf /tmp/sdk.tar.gz -C /opt/sdk/r6x \
+    && rm -rf /tmp/sdk.tar.gz
+
+# Add the toolchain file
+ADD toolchains/r6x_toolchain.cmake /opt/sdk/r6x/toolchain.cmake
+
+# Register it
+ENV R6X_TOOLCHAIN_FILE="/opt/sdk/r6x/toolchain.cmake"
+
+# =========
+# == V6X ==
+# =========
+
+RUN mkdir -p /opt/sdk/v6x \
+    && curl -fsSL https://artifactory.evs.tv:443/artifactory/evs-hw-release-generic/Dev/toolchains/aarch64/gcc-13.3.1-2024.06-evs.02-aarch64-linux-gnu.tar.gz -o /tmp/sdk.tar.gz \
+    && tar --strip-component=1 -xzf /tmp/sdk.tar.gz -C /opt/sdk/v6x \
+    && rm -rf /tmp/sdk.tar.gz
+
+# Add the toolchain file
+ADD toolchains/v6x_toolchain.cmake /opt/sdk/v6x/toolchain.cmake
+
+# Register it
+ENV V6X_TOOLCHAIN_FILE="/opt/sdk/v6x/toolchain.cmake"
+
+# =========
+# == N6X ==
+# =========
+
+# Currently the N6X has the same compiler as the V6X
+#RUN cd /opt/sdk \
+#    && ln -s v6x n6x
+
+# Add the toolchain file
+ADD toolchains/n6x_toolchain.cmake /opt/sdk/n6x/toolchain.cmake
+
+# Register it
+ENV N6X_TOOLCHAIN_FILE="/opt/sdk/n6x/toolchain.cmake"
+
+# ===============
+# == EVS LINUX ==
+# ===============
+
+# Add the toolchain file
+ADD toolchains/pc_toolchain.cmake /opt/sdk/evs_linux/toolchain.cmake
+
+# Register it
+ENV EVS_LINUX_TOOLCHAIN_FILE="/opt/sdk/evs_linux/toolchain.cmake"
+
+# ====================================
+# == SYSTEM TOOLS FROM DISTRIBUTION ==
+# ====================================
+
+# Install documentation and deployment tools from distribution
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      doxygen \
+      graphviz \
+      rsync \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
