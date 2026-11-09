@@ -160,15 +160,41 @@ public:
 
   int StartEngine()
   {
-    int Rts_i = mEngineInitDone ? 0 : -99; // Needed to forward Initialize call error in constructor
+    int Rts_i = -1;
+
+    if (!mEngineInitDone)
+    {
+      LOG_INFO(mVistaEngineParam_X.psILogger, "Create web server on {}", mVistaEngineParam_X.ListenIpAddress_X.ToString(true, false, false, true));
+      Rts_i = CreateWebServer(mVistaEngineParam_X.ListenIpAddress_X, mVistaEngineParam_X.WebServerParam_X);
+      if (Rts_i == 0)
+      {
+        mEngineInitDone = true;
+      }
+    }
     LOG_INFO(mVistaEngineParam_X.psILogger, "StartEngine returns {}", Rts_i);
     return Rts_i;
   }
   int StopEngine()
   {
-    int Rts_i = 0;
+    int Rts_i = -1;
+    if (mEngineInitDone)
+    {
+      if (mVistaEngineParam_X.ListenIpAddress_X.Port_U16 != 0)
+      {
+        LOG_INFO(mVistaEngineParam_X.psILogger, "Destory web server on {}", mVistaEngineParam_X.ListenIpAddress_X.ToString(true, false, false, true));
+        Rts_i = DestroyWebServer();
+      }
+      else
+      {
+        Rts_i = 0;
+        LOG_ERROR(mVistaEngineParam_X.psILogger, "No web component specified");
+      }
+      StopEngine();
 
-    LOG_INFO(mVistaEngineParam_X.psILogger, "StopEngine returns {}", Rts_i);
+      mEngineInitDone = false;
+      Rts_i = 0;
+    }
+    LOG_INFO(mVistaEngineParam_X.psILogger, "Shutdown returns {}", Rts_i);
     return Rts_i;
   }
 
