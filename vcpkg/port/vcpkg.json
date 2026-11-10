@@ -1,9 +1,7 @@
 {
-  "name": "onbings-vista",
+  "name": "evs-hwfw-canvas",
   "version": "1.2.3",
-  "description": "The onbings-vista engine",
-  "default-features": [
-  ],
+  "description": "The EVS-HWFW CANVAS application",
   "dependencies": [
     {
       "name": "evs-cmake"
@@ -15,28 +13,18 @@
       ]
     },
     {
-      "name": "evs-hwfw-chip"
+      "name": "evs-hwfw-chip",
+      "features": [
+        "printflogger"
+      ]
+    },
+    {
+      "name": "evs-hwfw-beacon"
     },
     {
       "name": "evs-hwfw-bofstd",
       "features": [
         "httplib"
-      ]
-    },
-    {
-      "name": "evs-hwfw-ace"
-    },
-    {
-      "name": "opencv4",
-      "default-features": false,
-      "features": [
-        "fs",
-        "intrinsics",
-        "jpeg",
-        "png",
-        "thread",
-        "tiff",
-        "webp"
       ]
     }
   ],

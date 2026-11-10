@@ -60,9 +60,13 @@ install(
 # == APPIMAGE ==
 # ==============
 
-evs_generate_manifest(
-  TARGET onbings-vista-service
-)
+# The manifest is only consumed by the Linux AppImage flow; its post-build step
+# (bare .py invocation) is unneeded and unreliable on Windows, so skip it there.
+if(NOT WIN32)
+  evs_generate_manifest(
+    TARGET onbings-vista-service
+  )
+endif()
 
 if(ONBINGS_VISTA_BUILD_APPIMAGES)
   message("====== APP IMAGE add file/dir to assets dir ======>" ${CMAKE_SOURCE_DIR}/code/sources/onbings-vista-lib/assets)

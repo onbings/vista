@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import hashlib
 import os
 import pathlib
 import sys
@@ -262,6 +263,10 @@ def main(argv):
 
     def chain_image(name, version, dockerfile, build, publish):
         last_image = images[-1].docker.get_image()
+
+        # Chain the parent image into the tag so that two projects sharing the
+        # same environment never reuse each other's (or a stale) image
+        version = hashlib.sha1(f"{last_image}:{version}".encode()).hexdigest()
 
         images.append(
             ImageTarget(

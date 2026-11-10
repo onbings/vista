@@ -52,9 +52,6 @@ RUN PRIMARY=/usr/bin/gcc-${GCC_VER} \
     && update-alternatives --install /usr/bin/gcc gcc "$PRIMARY" 100 $SLAVES \
     && update-alternatives --install /usr/bin/cpp cpp /usr/bin/cpp-${GCC_VER} 100
 
-ENV CC=gcc
-ENV CXX=g++
-
 # ============
 # == PYTHON ==
 # ============

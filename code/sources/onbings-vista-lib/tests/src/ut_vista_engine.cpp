@@ -40,6 +40,13 @@ TEST_F(onbings_vista_engine_tests, TalkToRunningService)
 {
 }
 
+TEST_F(onbings_vista_engine_tests, EngineWithoutWebInterface)
+{
+  EXPECT_EQ(mVistaEngineParam_X.ListenIpAddress_X.Port_U16, 0);
+  ASSERT_TRUE(mpsVistaEngine);
+  EXPECT_EQ(mpsVistaEngine->StartEngine(), 0);
+  EXPECT_EQ(mpsVistaEngine->StopEngine(), 0);
+}
 TEST_F(onbings_vista_engine_tests, EngineNewDelete)
 {
   int i;

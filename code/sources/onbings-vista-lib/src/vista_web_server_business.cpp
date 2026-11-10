@@ -6,26 +6,25 @@
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND/OR FITNESS FOR A PARTICULAR
  * PURPOSE.
  *
- * This module defines the CANVAS REST Api: Vision Intelligence, Statistics, and Tracking Analysis
+ * This module defines the VISTA REST Api: Vision Intelligence, Statistics, and Tracking Analysis
  *
  * Route layout
  * ============
- * GET  /canvas/v1/config                               – system configuration
+ * GET  /vista/v1/config                               – system configuration
 
  * Author:      Bernard HARMEL: b.harmel@gmail.com
  *
  * History:
  * V 1.00  September 25 2026  BHA : Initial release
  */
-#include <evs-hwfw-canvas/canvas_web_server.h>
 #include <sstream>
 #include <fstream>
 #include <filesystem>
 #include <algorithm>
-#include <cctype>
 #include <chrono>
+#include <onbings-vista/vista_web_server.h>
 
-#if defined(EVS_HWFW_CANVAS_ADD_AUTH)
+#if defined(EVS_HWFW_VISTA_ADD_AUTH)
 #include <jwt-cpp/jwt.h>
 #include <jwt-cpp/traits/nlohmann-json/traits.h>
 #include <jwt-cpp/traits/nlohmann-json/defaults.h>
@@ -33,32 +32,32 @@
 #include <security/pam_misc.h>
 #endif
 
-BEGIN_CANVAS_NAMESPACE()
+BEGIN_VISTA_NAMESPACE()
 
 // ---------------------------------------------------------------------------
 // Route registration
 // ---------------------------------------------------------------------------
 
-void CanvasWebServer::RegisterStreamControlRoutes()
+void VistaWebServer::RegisterStreamControlRoutes()
 {
-  // Configuration  ->  GET /canvas/v1/config
-  Get("/canvas/v1/config", [this](const BOF::BOF_WEB_REQUEST &_rReq, BOF::BOF_WEB_RESPONSE &_rRes) { this->GetConfig(_rReq, _rRes); });
+  // Configuration  ->  GET /vista/v1/config
+  Get("/vista/v1/config", [this](const BOF::BOF_WEB_REQUEST &_rReq, BOF::BOF_WEB_RESPONSE &_rRes) { this->GetConfig(_rReq, _rRes); });
 
   // --- Final fallback: Serve static files for any unmatched GET requests ---
   Get("/(.*)", [this](const BOF::BOF_WEB_REQUEST &_rReq, BOF::BOF_WEB_RESPONSE &_rRes) { this->GetStaticAsset(_rReq, _rRes); });
 }
 
 // ===========================================================================
-// GET /canvas/v1/config  -  System configuration
+// GET /vista/v1/config  -  System configuration
 // ===========================================================================
 
-void CanvasWebServer::GetConfig(const BOF::BOF_WEB_REQUEST & /*_rReq*/, BOF::BOF_WEB_RESPONSE &_rRes)
+void VistaWebServer::GetConfig(const BOF::BOF_WEB_REQUEST & /*_rReq*/, BOF::BOF_WEB_RESPONSE &_rRes)
 {
   BOF_WEB_JSON ResponseJson;
   BOF_WEB_JSON ConfigJson;
   bool Sts_B;
 
-#if defined(EVS_HWFW_CANVAS_ADD_AUTH)
+#if defined(EVS_HWFW_VISTA_ADD_AUTH)
   Sts_B = CheckJwt(_rReq, _rRes);
   if (Sts_B)
   {
@@ -88,7 +87,7 @@ void CanvasWebServer::GetConfig(const BOF::BOF_WEB_REQUEST & /*_rReq*/, BOF::BOF
   }
   catch (const std::exception &e)
   {
-    LOG_ERROR(mCanvasWebServerParam_X.psILogger, "GetConfig: Failed to serialize JSON response: {}", e.what());
+    LOG_ERROR(mVistaWebServerParam_X.psILogger, "GetConfig: Failed to serialize JSON response: {}", e.what());
     _rRes.status = BOF::BOF_WEB_STATUS::InternalServerError_500;
     _rRes.set_content(R"({"code": -999, "msg": "JSON serialization error"})", "application/json");
   }
@@ -98,11 +97,11 @@ void CanvasWebServer::GetConfig(const BOF::BOF_WEB_REQUEST & /*_rReq*/, BOF::BOF
 // Business stub - GetConfig
 // ---------------------------------------------------------------------------
 
-bool CanvasWebServer::GetConfig(BOF_WEB_JSON &_rConfigJson)
+bool VistaWebServer::GetConfig(BOF_WEB_JSON &_rConfigJson)
 {
   bool Rts_B = false;
 
-  LOG_INFO(mCanvasWebServerParam_X.psILogger, "GetConfig");
+  LOG_INFO(mVistaWebServerParam_X.psILogger, "GetConfig");
   Rts_B = true;
   _rConfigJson["dummy"] = false;
   return Rts_B;
@@ -112,21 +111,21 @@ bool CanvasWebServer::GetConfig(BOF_WEB_JSON &_rConfigJson)
 // GET /*  -  Static asset fallback
 // ===========================================================================
 
-void CanvasWebServer::GetStaticAsset(const BOF::BOF_WEB_REQUEST &_rReq, BOF::BOF_WEB_RESPONSE &_rRes)
+void VistaWebServer::GetStaticAsset(const BOF::BOF_WEB_REQUEST &_rReq, BOF::BOF_WEB_RESPONSE &_rRes)
 {
-  LOG_INFO(mCanvasWebServerParam_X.psILogger, "GetStaticAsset: method='{}' path='{}'", _rReq.method, _rReq.path);
+  LOG_INFO(mVistaWebServerParam_X.psILogger, "GetStaticAsset: method='{}' path='{}'", _rReq.method, _rReq.path);
 
   const bool Served_B = mpuStaticFileServer->Serve(_rReq, _rRes);
-  LOG_INFO(mCanvasWebServerParam_X.psILogger, "GetStaticAsset: served={} status={}", Served_B, static_cast<int>(_rRes.status));
+  LOG_INFO(mVistaWebServerParam_X.psILogger, "GetStaticAsset: served={} status={}", Served_B, static_cast<int>(_rRes.status));
 }
-#if defined(EVS_HWFW_CANVAS_ADD_AUTH)
+#if defined(EVS_HWFW_VISTA_ADD_AUTH)
 // Security
 // Define the SECRET_KEY key. In a real application, this should be securely stored and not hard-coded.
 const std::string SECRET_KEY = "xts_is_a_great_project_bha";
 const uint32_t TOKEN_ALIVE_TIME_IN_SEC = (30 * 60);
-const std::string TOKEN_ISSUER = "canvas";
+const std::string TOKEN_ISSUER = "vista";
 
-bool CanvasWebServer::IsLocalAddress(const std::string &_rIpAddress_S)
+bool VistaWebServer::IsLocalAddress(const std::string &_rIpAddress_S)
 {
   bool Rts_B = false;
 
@@ -147,12 +146,12 @@ bool CanvasWebServer::IsLocalAddress(const std::string &_rIpAddress_S)
   }
   return Rts_B;
 }
-bool CanvasWebServer::CheckJwt(const BOF::BOF_WEB_REQUEST &_rReq, BOF::BOF_WEB_RESPONSE &_rRes)
+bool VistaWebServer::CheckJwt(const BOF::BOF_WEB_REQUEST &_rReq, BOF::BOF_WEB_RESPONSE &_rRes)
 {
   bool Rts_B = false;
   BOF_WEB_JSON ResponseJson;
   std::string Token_S;
-  const char *pEnvSecret_c = std::getenv("EVS_HWFW_CANVAS_JWT_SECRET");
+  const char *pEnvSecret_c = std::getenv("EVS_HWFW_VISTA_JWT_SECRET");
   const std::string SecretKey_S = pEnvSecret_c ? pEnvSecret_c : SECRET_KEY;
 
   LOG_INFO(mpsILogger, "CheckJwt from {}", _rReq.remote_addr);
@@ -234,7 +233,7 @@ static int S_PamConversation(int _NbMsg_i, const struct pam_message **_ppMsg_X, 
   return Rts_i;
 }
 
-bool CanvasWebServer::PamAuthenticate(const std::string &_rUsername_S, const std::string &_rPassword_S, const std::string &_rPamService_S)
+bool VistaWebServer::PamAuthenticate(const std::string &_rUsername_S, const std::string &_rPassword_S, const std::string &_rPamService_S)
 {
   pam_handle_t *pPam_X = nullptr;
   struct pam_conv PamConversation_X = {S_PamConversation, (void *)_rPassword_S.c_str()};
@@ -255,11 +254,11 @@ bool CanvasWebServer::PamAuthenticate(const std::string &_rUsername_S, const std
   return (Sts_i == PAM_SUCCESS);
 }
 
-void CanvasWebServer::PostAuth(const BOF::BOF_WEB_REQUEST &_rReq, BOF::BOF_WEB_RESPONSE &_rRes)
+void VistaWebServer::PostAuth(const BOF::BOF_WEB_REQUEST &_rReq, BOF::BOF_WEB_RESPONSE &_rRes)
 {
   BOF_WEB_JSON ResponseJson;
   std::string Username_S, Password_S, PamService_S;
-  const char *pEnvSecret_c = std::getenv("EVS_HWFW_CANVAS_JWT_SECRET");
+  const char *pEnvSecret_c = std::getenv("EVS_HWFW_VISTA_JWT_SECRET");
   const std::string SecretKey_S = pEnvSecret_c ? pEnvSecret_c : SECRET_KEY;
 
   try
@@ -331,4 +330,4 @@ void CanvasWebServer::PostAuth(const BOF::BOF_WEB_REQUEST &_rReq, BOF::BOF_WEB_R
   }
 }
 #endif
-END_CANVAS_NAMESPACE()
+END_VISTA_NAMESPACE()

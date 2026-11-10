@@ -13,7 +13,10 @@
       ]
     },
     {
-      "name": "evs-hwfw-chip"
+      "name": "evs-hwfw-chip",
+      "features": [
+        "printflogger"
+      ]
     },
     {
       "name": "evs-hwfw-bofstd",

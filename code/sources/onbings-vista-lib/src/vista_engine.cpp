@@ -13,15 +13,13 @@
  * History:
  * V 1.00  September 25 2026  BHA : Initial release
  */
-// ffplay -f rawvideo -pixel_format nv12 -video_size 960x540 module_0_ch_0_indx_0.yuv8
-// ffplay -f rawvideo -pixel_format gray -video_size 960x540 -i module_4_ch_0_indx_0.y8
-// ffplay -f rawvideo -pixel_format gray -video_size 960x270 -i module_4_ch_0_indx_0.uv8
-// ffmpeg -f rawvideo -pixel_format nv12 -video_size 960x540 -i module_1_ch_0_indx_0.yuv8 -frames:v 1 sortie.jpg or sortie.png
-// sudo hexdump -C -s 0x300000000 -n 256 /dev/mem
 #include "onbings-vista/compiled_version.h"
 #include "onbings-vista/vista_engine.h"
 #include "onbings-vista/vista_web_server.h"
+#include <evs-hwfw-chip/rt_thread.h>
 
+constexpr uint32_t VISTA_ENGINE_TIMEOUT_IN_MS = 500;
+constexpr uint32_t VISTA_ENGINE_POLL_IN_MS = 500;
 BEGIN_VISTA_NAMESPACE();
 
 // Opaque pointer design pattern: defined privately here all private data and functions: all of these can now change without recompiling callers ...
@@ -64,7 +62,8 @@ public:
       }
       else
       {
-        LOG_ERROR(mVistaEngineParam_X.psILogger, "No web component specified");
+        Rts_i = 0;
+        LOG_INFO(mVistaEngineParam_X.psILogger, "Web interface disabled");
       }
       if (Rts_i == 0)
       {
@@ -161,14 +160,34 @@ public:
   int StartEngine()
   {
     int Rts_i = -1;
-
-    if (!mEngineInitDone)
+    // Check if thread is already running
+    if (!mWorkerThreadRunning)
     {
-      LOG_INFO(mVistaEngineParam_X.psILogger, "Create web server on {}", mVistaEngineParam_X.ListenIpAddress_X.ToString(true, false, false, true));
-      Rts_i = CreateWebServer(mVistaEngineParam_X.ListenIpAddress_X, mVistaEngineParam_X.WebServerParam_X);
-      if (Rts_i == 0)
+      Rts_i = -2;
+      mStopWorkerThreadRequested = false;
+      // Start the worker thread
+      mpuWorkerThread = std::make_unique<CHIP::RtThread>(50, "Vista Engine", [this]() { this->WorkerThreadFunction(); });
+      if (mpuWorkerThread)
       {
-        mEngineInitDone = true;
+        Rts_i = -3;
+        // Wait for the worker thread to start (max VISTA_ENGINE_TIMEOUT_IN_MS*2)
+        auto Start = std::chrono::steady_clock::now();
+        auto TimeoutInMs = std::chrono::milliseconds(VISTA_ENGINE_TIMEOUT_IN_MS * 2);
+
+        while (!mWorkerThreadRunning && (std::chrono::steady_clock::now() - Start) < TimeoutInMs)
+        {
+          std::this_thread::sleep_for(std::chrono::milliseconds(VISTA_ENGINE_POLL_IN_MS));
+        }
+
+        if (mWorkerThreadRunning)
+        {
+          mStartTimeInMicro_U64 = BOF::Bof_GetUsTickCount();
+          Rts_i = 0;
+        }
+        else
+        {
+          LOG_ERROR(mVistaEngineParam_X.psILogger, "Worker thread failed to start within timeout");
+        }
       }
     }
     LOG_INFO(mVistaEngineParam_X.psILogger, "StartEngine returns {}", Rts_i);
@@ -177,37 +196,84 @@ public:
   int StopEngine()
   {
     int Rts_i = -1;
-    if (mEngineInitDone)
+
+    if (mWorkerThreadRunning)
     {
-      if (mVistaEngineParam_X.ListenIpAddress_X.Port_U16 != 0)
+      Rts_i = -2;
+      mStopWorkerThreadRequested = true;
+
+      // Wait for the worker thread to stop (max VISTA_ENGINE_TIMEOUT_IN_MS*2)
+      auto Start = std::chrono::steady_clock::now();
+      auto TimeoutInMs = std::chrono::milliseconds(VISTA_ENGINE_TIMEOUT_IN_MS * 2);
+
+      while (mWorkerThreadRunning && (std::chrono::steady_clock::now() - Start) < TimeoutInMs)
       {
-        LOG_INFO(mVistaEngineParam_X.psILogger, "Destory web server on {}", mVistaEngineParam_X.ListenIpAddress_X.ToString(true, false, false, true));
-        Rts_i = DestroyWebServer();
+        std::this_thread::sleep_for(std::chrono::milliseconds(VISTA_ENGINE_POLL_IN_MS));
+      }
+
+      if (!mWorkerThreadRunning)
+      {
+        Rts_i = 0;
       }
       else
       {
-        Rts_i = 0;
-        LOG_ERROR(mVistaEngineParam_X.psILogger, "No web component specified");
+        LOG_ERROR(mVistaEngineParam_X.psILogger, "Worker thread did not stop within timeout");
       }
-      StopEngine();
 
-      mEngineInitDone = false;
+      // Join the thread to clean up resources
+      if ((mpuWorkerThread) && (mpuWorkerThread->joinable()))
+      {
+        mpuWorkerThread->join();
+      }
+    }
+    else
+    {
       Rts_i = 0;
     }
-    LOG_INFO(mVistaEngineParam_X.psILogger, "Shutdown returns {}", Rts_i);
+    LOG_INFO(mVistaEngineParam_X.psILogger, "StopEngine returns {}", Rts_i);
     return Rts_i;
   }
 
   bool IsRestartRequested()
   {
-    //   return mpuMmEngine ? mpuMmEngine->IsApplicationRestartRequested() : false;
-    return false;
+    bool Rts_B = false;
+    if (mpuVistaWebServer)
+    {
+      // Rts_B = mpuVistaWebServer->CleanupExpiredService();
+    }
+    return Rts_B;
+  }
+  void WorkerThreadFunction()
+  {
+    mWorkerThreadRunning = true;
+    LOG_INFO(mVistaEngineParam_X.psILogger, "Worker thread started");
+
+    while (!mStopWorkerThreadRequested)
+    {
+      try
+      {
+        std::this_thread::sleep_for(std::chrono::milliseconds(VISTA_ENGINE_POLL_IN_MS));
+      }
+      catch (const std::exception &e)
+      {
+        LOG_ERROR(mVistaEngineParam_X.psILogger, "Error in worker thread: {}", e.what());
+        // Continue running even if there's an error
+        std::this_thread::sleep_for(std::chrono::milliseconds(VISTA_ENGINE_POLL_IN_MS));
+      }
+    }
+
+    LOG_INFO(mVistaEngineParam_X.psILogger, "Worker thread stopped");
+    mWorkerThreadRunning = false;
   }
 
 private:
   VISTA_ENGINE_PARAM mVistaEngineParam_X;
   std::atomic<bool> mEngineInitDone{false};
   std::unique_ptr<VistaWebServer> mpuVistaWebServer = nullptr;
+  std::unique_ptr<CHIP::RtThread> mpuWorkerThread = nullptr;
+  std::atomic<bool> mStopWorkerThreadRequested{false};
+  std::atomic<bool> mWorkerThreadRunning{false};
+  uint64_t mStartTimeInMicro_U64 = 0;
 };
 
 // Opaque pointer design pattern: initialize the pointer to the implementation class

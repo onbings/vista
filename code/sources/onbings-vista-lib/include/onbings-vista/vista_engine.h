@@ -29,8 +29,8 @@ BEGIN_VISTA_NAMESPACE()
  */
 struct VISTA_ENGINE_PARAM
 {
-  std::shared_ptr<EVS::HwFw::Ilf::ILogger> psILogger; //!< Logger instances. Set to nullptr to disable logging
-  BOF::BOF_SOCKET_ADDRESS_COMPONENT ListenIpAddress_X;
+  std::shared_ptr<EVS::HwFw::Ilf::ILogger> psILogger;  //!< Logger instances. Set to nullptr to disable logging
+  BOF::BOF_SOCKET_ADDRESS_COMPONENT ListenIpAddress_X; //!< Web interface listen address. Port 0 disables the web interface.
   BOF::BOF_WEB_SERVER_PARAM WebServerParam_X;
   /**
    *@brief Constructs a new VISTA_ENGINE_PARAM object.**Initializes the parameters with their default values by calling `Reset()`.

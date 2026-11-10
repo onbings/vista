@@ -89,6 +89,7 @@ target_link_libraries(onbings-vista-objects
   PUBLIC
   PRIVATE
   EVS::evs-hwfw-ilf
+  EVS::evs-hwfw-chip
   ONBINGS::bofstd
 )
 # Defines

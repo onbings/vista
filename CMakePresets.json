@@ -11,8 +11,7 @@
       "hidden": true,
       "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
       "cacheVariables": {
-        "VCPKG_OVERLAY_TRIPLETS": "${sourceDir}/environment/vcpkg/triplets",
-        "VCPKG_OVERLAY_PORTS": "${sourceDir}/vcpkg-overlays"
+        "VCPKG_OVERLAY_TRIPLETS": "${sourceDir}/environment/vcpkg/triplets"
       }
     },
     {
