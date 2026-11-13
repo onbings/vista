@@ -99,7 +99,8 @@
             "type": "process",
             "command": "${workspaceFolder}/.vscode/remote-task.sh",
             "args": [
-                "mkdir"
+                "mkdir",
+                "${command:cmake.activeConfigurePresetName}"
             ],
             "group": "build"
         },
@@ -112,7 +113,8 @@
             "type": "process",
             "command": "${workspaceFolder}/.vscode/remote-task.sh",
             "args": [
-                "stop"
+                "stop",
+                "${command:cmake.activeConfigurePresetName}"
             ],
             "group": "build",
             "isBackground": false,
@@ -135,7 +137,8 @@
             "command": "${workspaceFolder}/.vscode/remote-task.sh",
             "args": [
                 "deploy",
-                "all-p6x-debug"
+                "all-p6x-debug",
+                "${command:cmake.activeConfigurePresetName}"
             ],
             "group": "build"
         },
@@ -150,7 +153,8 @@
             "command": "${workspaceFolder}/.vscode/remote-task.sh",
             "args": [
                 "deploy",
-                "all-p6x-release"
+                "all-p6x-release",
+                "${command:cmake.activeConfigurePresetName}"
             ],
             "group": "build"
         },

@@ -3,9 +3,9 @@
 # Project-specific values are read from .vscode/settings.json.
 #
 # Usage: remote-task.sh <action> [args]
-#   stop                    stop gdbserver on the configured port and configured processes
-#   mkdir                   create the configured remote directories
-#   deploy <build-name>     rsync configured build artifacts to the target
+#   stop [preset]                       stop gdbserver and configured processes
+#   mkdir [preset]                      create the configured remote directories
+#   deploy <build-name> [preset]        rsync configured build artifacts to the target
 #   debug <preset> <exe>    stop, deploy and run an executable under gdbserver
 
 set -u
@@ -96,6 +96,7 @@ TARGET="${TARGET_USER}@${TARGET_HOST}"
 DEPLOY_DIR="$(cfg remoteDeployDir '/tmp/${env:USER}_${workspaceFolderBasename}')"
 BUILD_DIR_TEMPLATE="$(cfg remoteBuildDir '${workspaceFolder}/out/build/{BUILD}/binaries')"
 mapfile -t SYNC_DIRS < <(cfg remoteSyncDirs $'bin\nlib')
+mapfile -t SYNC_MAPPINGS < <(cfg remoteSyncMappings)
 mapfile -t EXTRA_SYNC < <(cfg remoteExtraSync)
 mapfile -t MKDIRS < <(cfg remoteMkdirs)
 mapfile -t STOP_PROCESSES < <(cfg remoteStopProcesses)
@@ -103,37 +104,63 @@ LD_PATH="$(cfg remoteLdLibraryPath)"
 GDBSERVER="$(cfg remoteGdbserver gdbserver)"
 GDB_LISTEN="$(cfg remoteGdbserverListen localhost)"
 RELEASE_REGEX="$(cfg remoteReleasePresetRegex '-r(e)?lease$')"
+SSH_KEY="$(cfg remoteSshKey)"
+SSH_KEY_REGEX="$(cfg remoteSshKeyPresetRegex)"
+SSH_ARGS=()
+RSYNC_RSH=ssh
 
 log "settings: ${SETTINGS}"
 log "action=${ACTION} target=${TARGET} gdb-port=${PORT} deploy-dir=${DEPLOY_DIR}"
 
+select_transport() {
+  local preset="${1-}"
+  SSH_ARGS=()
+  RSYNC_RSH=ssh
+  if [[ -n "${preset}" && -n "${SSH_KEY}" && -n "${SSH_KEY_REGEX}" && "${preset}" =~ ${SSH_KEY_REGEX} ]]; then
+    [[ -f "${SSH_KEY}" ]] || die "SSH identity file not found: ${SSH_KEY}"
+    SSH_ARGS=(-i "${SSH_KEY}")
+    RSYNC_RSH="ssh -i \"${SSH_KEY}\""
+  fi
+}
+
 remote_stop() {
+  select_transport "${1-}"
   log "Stopping gdbserver on port ${PORT} on ${TARGET}"
-  run ssh "${TARGET}" "pkill -f \"gdbserver.*${PORT}\" || true" || true
+  run ssh "${SSH_ARGS[@]}" "${TARGET}" "pkill -f \"gdbserver.*${PORT}\" || true" || true
   local name
   for name in "${STOP_PROCESSES[@]}"; do
     log "Stopping process '${name}' on ${TARGET}"
-    run ssh "${TARGET}" "killall -9 ${name} || true" || true
+    run ssh "${SSH_ARGS[@]}" "${TARGET}" "killall -9 ${name} || true" || true
   done
 }
 
 remote_mkdir() {
+  select_transport "${1-}"
   local command="mkdir -p ${DEPLOY_DIR}" directory
   for directory in "${MKDIRS[@]}"; do
     command+=" ${DEPLOY_DIR}/${directory}"
   done
   log "Creating remote directories under ${DEPLOY_DIR}"
-  run ssh "${TARGET}" "${command}"
+  run ssh "${SSH_ARGS[@]}" "${TARGET}" "${command}"
 }
 
 remote_deploy() {
-  local build_dir="${BUILD_DIR_TEMPLATE//\{BUILD\}/$1}" directory pair
+  select_transport "${2-}"
+  local build_dir="${BUILD_DIR_TEMPLATE//\{BUILD\}/$1}" directory pair source destination
   log "Deploying '${build_dir}' to ${TARGET}:${DEPLOY_DIR}"
-  for directory in "${SYNC_DIRS[@]}"; do
-    run rsync -av "${build_dir}/${directory}/" "${TARGET}:${DEPLOY_DIR}/${directory}/" || return 1
-  done
+  if ((${#SYNC_MAPPINGS[@]})); then
+    for pair in "${SYNC_MAPPINGS[@]}"; do
+      source="${pair%%:*}"
+      destination="${pair#*:}"
+      run rsync -e "${RSYNC_RSH}" -av "${build_dir}/${source}/" "${TARGET}:${DEPLOY_DIR}/${destination}/" || return 1
+    done
+  else
+    for directory in "${SYNC_DIRS[@]}"; do
+      run rsync -e "${RSYNC_RSH}" -av "${build_dir}/${directory}/" "${TARGET}:${DEPLOY_DIR}/${directory}/" || return 1
+    done
+  fi
   for pair in "${EXTRA_SYNC[@]}"; do
-    run rsync -av "${ROOT}/${pair%%:*}/" "${TARGET}:${DEPLOY_DIR}/${pair#*:}/" || return 1
+    run rsync -e "${RSYNC_RSH}" -av "${ROOT}/${pair%%:*}/" "${TARGET}:${DEPLOY_DIR}/${pair#*:}/" || return 1
   done
   log "Deploy done"
 }
@@ -148,23 +175,24 @@ remote_debug() {
     log "Preset '${preset}' is a debug preset"
   fi
   log "Selected build: ${build_name}"
-  remote_stop
-  remote_mkdir || die "remote mkdir failed"
-  remote_deploy "${build_name}" || die "deploy failed"
+  remote_stop "${preset}"
+  remote_mkdir "${preset}" || die "remote mkdir failed"
+  remote_deploy "${build_name}" "${preset}" || die "deploy failed"
   local executable_dir="${DEPLOY_DIR}/$(dirname "${executable}")" command
   command="cd ${executable_dir}"
   [[ -n "${LD_PATH}" ]] && command+=" && export LD_LIBRARY_PATH=${LD_PATH}"
   command+=" && ${GDBSERVER} ${GDB_LISTEN}:${PORT} ${DEPLOY_DIR}/${executable}"
   log "Starting gdbserver for '${executable}' (blocks until the debug session ends)"
-  run ssh -t "${TARGET}" "${command}"
+  select_transport "${preset}"
+  run ssh "${SSH_ARGS[@]}" -t "${TARGET}" "${command}"
 }
 
 case "${ACTION}" in
-  stop) remote_stop ;;
-  mkdir) remote_mkdir ;;
+  stop) remote_stop "${1-}" ;;
+  mkdir) remote_mkdir "${1-}" ;;
   deploy)
     [[ $# -ge 1 ]] || die "deploy needs <build-name>"
-    remote_deploy "$1" || die "deploy failed"
+    remote_deploy "$1" "${2-}" || die "deploy failed"
     ;;
   debug)
     [[ $# -ge 2 ]] || die "debug needs <preset> <exe>"

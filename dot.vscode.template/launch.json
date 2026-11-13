@@ -103,6 +103,11 @@
             "miDebuggerPath": "/opt/sdk/p6x/opt/ext-toolchain/bin/x86_64-evs-linux-gnu-gdb",
             "setupCommands": [
                 {
+                    "description": "Load the remote target's libraries instead of potentially mismatched SDK libraries",
+                    "text": "set sysroot target:",
+                    "ignoreFailures": false
+                },
+                {
                     "description": "Enable pretty-printing for gdb",
                     "text": "-enable-pretty-printing",
                     "ignoreFailures": true
@@ -124,6 +129,11 @@
             "miDebuggerArgs": "-iex \"set index-cache enabled on\" -iex \"set debuginfod enabled off\"",
             "miDebuggerPath": "/opt/sdk/p6x/opt/ext-toolchain/bin/x86_64-evs-linux-gnu-gdb",
             "setupCommands": [
+                {
+                    "description": "Load the remote target's libraries instead of potentially mismatched SDK libraries",
+                    "text": "set sysroot target:",
+                    "ignoreFailures": false
+                },
                 {
                     "description": "Enable pretty-printing for gdb",
                     "text": "-enable-pretty-printing",
